@@ -1175,6 +1175,7 @@
   function applyCalMode(mode, skipSave = false) {
     if (!CAL_MODES.includes(mode)) mode = "month";
     state.calMode = mode;
+    CAL_MODES.forEach((m) => document.body.classList.toggle(`cal-mode-${m}`, m === mode));
     $$(".cal-mode-btn").forEach((btn) => {
       const on = btn.dataset.calMode === mode;
       btn.classList.toggle("active", on);
@@ -1194,9 +1195,19 @@
         paintAgendaDay();
         renderAgenda();
       }
+      syncCalHeight();
       requestAnimationFrame(() => state.calendar && state.calendar.updateSize());
+    } else {
+      syncCalHeight();
     }
     if (!skipSave) saveSettings();
+  }
+
+  function syncCalHeight() {
+    if (!state.calendar) return;
+    const month = state.calMode === "month";
+    state.calendar.setOption("height", month ? "auto" : "100%");
+    state.calendar.setOption("expandRows", !month);
   }
 
   function renderCalAgendaFull() {
@@ -1394,7 +1405,8 @@
       buttonText: { today: "Today" },
       firstDay: 1,
       weekends: true,
-      height: "100%",
+      height: state.calMode === "month" ? "auto" : "100%",
+      expandRows: state.calMode !== "month",
       dayHeaderFormat: calDayHeaderFormat(),
       dayMaxEvents: 0,
       navLinks: false,
@@ -1463,6 +1475,7 @@
     state.calendar.setOption("weekends", true);
     state.calendar.setOption("dayMaxEvents", 0);
     state.calendar.setOption("dayHeaderFormat", calDayHeaderFormat());
+    syncCalHeight();
   }
 
   function ensureMap() {

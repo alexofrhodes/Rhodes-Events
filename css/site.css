@@ -1664,6 +1664,42 @@ body.view-rails main {
   overflow-y: auto;
 }
 
+/* Month: content-height grid (counts/dots); agenda uses leftover space. */
+body.cal-mode-month .cal-layout #calendar {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+}
+
+body.cal-mode-month .cal-layout .day-agenda {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+/* Kill FullCalendar row stretch in month (inline table heights). */
+body.cal-mode-month .fc .fc-daygrid-body,
+body.cal-mode-month .fc .fc-daygrid-body table,
+body.cal-mode-month .fc .fc-scrollgrid-sync-table {
+  height: auto !important;
+}
+
+body.cal-mode-month .fc .fc-daygrid-day-frame {
+  min-height: 2.6rem;
+  height: auto !important;
+}
+
+body.cal-mode-month .fc .fc-daygrid-day-events {
+  min-height: 0 !important;
+  margin: 0.1rem 0 0;
+}
+
+body.cal-mode-month .fc .fc-daygrid-body-unbalanced .fc-daygrid-day-events {
+  position: relative;
+  left: 0;
+  right: 0;
+}
+
 @media (max-width: 599px) {
   .fc .fc-toolbar {
     gap: 0.25rem;
@@ -1707,18 +1743,6 @@ body.view-rails main {
 
   .cal-layout {
     gap: 0.55rem;
-  }
-
-  .cal-layout #calendar {
-    flex: 0 0 auto;
-    height: min(48dvh, 340px);
-    min-height: 220px;
-  }
-
-  .cal-layout .day-agenda {
-    max-height: none;
-    min-height: 0;
-    flex: 1 1 auto;
   }
 
   .day-agenda h2 {
@@ -1838,6 +1862,21 @@ body.view-rails main {
     position: sticky;
     top: 0;
     align-self: stretch;
+  }
+
+  body.cal-mode-month .cal-layout {
+    grid-template-rows: auto;
+    align-items: start;
+  }
+
+  body.cal-mode-month .cal-layout #calendar {
+    height: auto;
+    min-height: 0;
+  }
+
+  body.cal-mode-month .cal-layout .day-agenda {
+    max-height: calc(100dvh - 12rem);
+    align-self: start;
   }
 }
 
