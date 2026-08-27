@@ -43,7 +43,10 @@
     <div class="top-inner">
       <div class="brand">
         <img class="brand-logo" src="icons/icon-192.png" width="36" height="36" alt="" />
-        <h1 id="site-title">Events</h1>
+        <div class="brand-text">
+          <h1 id="site-title">Events</h1>
+          <time id="clock-now" class="clock-now" datetime=""></time>
+        </div>
       </div>
       <div class="views-dd" id="views-dd">
         <button type="button" id="views-dd-btn" class="views-dd-btn" aria-haspopup="listbox" aria-expanded="false">
@@ -308,6 +311,12 @@
       <p class="muted about-note">Stars stay in this browser only.</p>
     </div>
   </div>
+
+  <footer class="site-info" id="site-info" aria-label="Update status">
+    <span id="info-app-updated"></span>
+    <span class="site-info-sep" aria-hidden="true">·</span>
+    <span id="info-data-updated"></span>
+  </footer>
 
   <button type="button" id="scroll-top" class="scroll-top" aria-label="Scroll to top">↑</button>
 

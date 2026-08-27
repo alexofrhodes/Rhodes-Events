@@ -361,6 +361,8 @@
     renderCategoryPicker();
     renderLocationFilter();
     applyFilters();
+    tickClock();
+    renderUpdateInfo();
     if (state.selected) {
       const id = state.selected.id;
       if (!$("#detail").classList.contains("hidden")) openDetail(id);
@@ -1000,6 +1002,77 @@
       return;
     }
     titleEl.textContent = `${base} (${count})`;
+  }
+
+  function localeTag() {
+    return state.lang === "el" ? "el-GR" : "en-GB";
+  }
+
+  function fmtClock(d) {
+    const loc = localeTag();
+    const day = d.toLocaleDateString(loc, { weekday: "short" });
+    const date = d.toLocaleDateString(loc, { day: "numeric", month: "short", year: "numeric" });
+    const time = d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return `${day} ${date} · ${time}`;
+  }
+
+  function fmtStamp(value) {
+    if (!value) return "";
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString(localeTag(), {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function tickClock() {
+    const el = $("#clock-now");
+    if (!el) return;
+    const now = new Date();
+    el.dateTime = now.toISOString();
+    el.textContent = fmtClock(now);
+  }
+
+  function startClock() {
+    tickClock();
+    if (state._clockTimer) clearInterval(state._clockTimer);
+    state._clockTimer = setInterval(tickClock, 1000);
+  }
+
+  function renderUpdateInfo() {
+    const appEl = $("#info-app-updated");
+    const dataEl = $("#info-data-updated");
+    if (!appEl || !dataEl) return;
+    const appLabel = state.lang === "el" ? "Εφαρμογή" : "App";
+    const dataLabel = state.lang === "el" ? "Δεδομένα" : "Data";
+    const appStamp = fmtStamp(state.appUpdatedAt) || "—";
+    const dataStamp = fmtStamp(state.data && state.data.generated) || "—";
+    appEl.textContent = `${appLabel}: ${appStamp}`;
+    dataEl.textContent = `${dataLabel}: ${dataStamp}`;
+  }
+
+  async function detectAppUpdated() {
+    let best = null;
+    const tryHeader = async (url) => {
+      try {
+        const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+        const raw = res.headers.get("last-modified");
+        if (!raw) return;
+        const d = new Date(raw);
+        if (!Number.isNaN(d.getTime()) && (!best || d > best)) best = d;
+      } catch (_) {}
+    };
+    await Promise.all([tryHeader("index.html"), tryHeader("js/site.js"), tryHeader("css/site.css")]);
+    if (!best) {
+      const d = new Date(document.lastModified);
+      if (!Number.isNaN(d.getTime())) best = d;
+    }
+    state.appUpdatedAt = best;
+    renderUpdateInfo();
   }
 
   function clearResultCount() {
@@ -2908,6 +2981,9 @@
     state.rawEvents = (Array.isArray(state.data.events) ? state.data.events : []).slice();
     rebuildEventsFromLang();
     syncLangButtons();
+    startClock();
+    renderUpdateInfo();
+    detectAppUpdated();
     renderCategoryPicker();
     renderLocationFilter();
     setView(state.view || firstEnabledView());
