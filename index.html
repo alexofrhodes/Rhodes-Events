@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Events" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Events</title>
+  <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="icons/favicon-48.png" type="image/png" sizes="48x48" />
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192" />
+  <link rel="shortcut icon" href="icons/favicon.ico" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" sizes="192x192" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="css/site.css" />
+  <script>
+    window.SITE_VIEWS = [
+      ["cards", true],
+      ["rails", true],
+      ["table", true],
+      ["posters", true],
+      ["calendar", true],
+      ["map", true],
+      ["starred", true],
+    ];
+    window.SITE_PRINT = true;
+  </script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand">
+        <img class="brand-logo" src="icons/icon-192.png" width="36" height="36" alt="" />
+        <h1 id="site-title">Events</h1>
+      </div>
+      <div class="views-dd" id="views-dd">
+        <button type="button" id="views-dd-btn" class="views-dd-btn" aria-haspopup="listbox" aria-expanded="false">
+          <span id="views-dd-label">Cards</span>
+          <span class="views-dd-caret" aria-hidden="true">▾</span>
+        </button>
+        <div id="views-dd-menu" class="views-dd-menu hidden" role="listbox" aria-label="Views">
+          <button type="button" role="option" data-view="cards">Cards</button>
+          <button type="button" role="option" data-view="rails">Rails</button>
+          <button type="button" role="option" data-view="table">Table</button>
+          <button type="button" role="option" data-view="posters">Posters</button>
+          <button type="button" role="option" data-view="calendar">Calendar</button>
+          <button type="button" role="option" data-view="map">Map</button>
+          <button type="button" role="option" data-view="starred">Starred</button>
+        </div>
+      </div>
+      <button type="button" id="filters-dd-btn" class="filters-dd-btn" aria-haspopup="true" aria-expanded="false" aria-controls="filters-wrap">
+        Filters
+      </button>
+      <div class="top-actions">
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button type="button" id="lang-en" class="lang-btn active" data-lang="en" aria-pressed="true" title="English" aria-label="English">
+            <img class="lang-flag" src="icons/flag-gb.svg" alt="" width="20" height="15" decoding="async" />
+          </button>
+          <button type="button" id="lang-el" class="lang-btn" data-lang="el" aria-pressed="false" title="Ελληνικά" aria-label="Ελληνικά">
+            <img class="lang-flag" src="icons/flag-gr.svg" alt="" width="20" height="15" decoding="async" />
+          </button>
+        </div>
+        <button type="button" id="btn-install" class="icon-btn hidden" aria-label="Install app" title="Install app">↓</button>
+        <button type="button" id="btn-print" class="icon-btn" aria-label="Print" title="Print">⎙</button>
+        <button type="button" id="btn-settings" class="icon-btn" aria-label="Settings" title="Settings">⚙</button>
+        <button type="button" id="btn-about" class="icon-btn" aria-label="About" title="About">?</button>
+      </div>
+    </div>
+    <div class="hscroll-wrap views-wrap" id="views-wrap">
+      <div class="hscroll-fade hscroll-fade-start hidden" data-hscroll-fade="start" aria-hidden="true"></div>
+      <div class="views hscroll" id="views-scroll" role="tablist">
+        <button type="button" class="view-btn active" data-view="cards" aria-selected="true">Cards</button>
+        <button type="button" class="view-btn" data-view="rails" aria-selected="false">Rails</button>
+        <button type="button" class="view-btn" data-view="table" aria-selected="false">Table</button>
+        <button type="button" class="view-btn" data-view="posters" aria-selected="false">Posters</button>
+        <button type="button" class="view-btn" data-view="calendar" aria-selected="false">Calendar</button>
+        <button type="button" class="view-btn" data-view="map" aria-selected="false">Map</button>
+        <button type="button" class="view-btn" data-view="starred" aria-selected="false">Starred</button>
+      </div>
+      <div class="hscroll-fade hscroll-fade-end hidden" data-hscroll-fade="end" aria-hidden="true"></div>
+    </div>
+    <div class="hscroll-wrap filters-wrap" id="filters-wrap">
+      <div class="filters hscroll" id="filters">
+        <label class="search-wrap">
+          <span class="sr-only">Search</span>
+          <input id="search" type="search" placeholder="Search…" autocomplete="off" />
+        </label>
+        <div class="range-group">
+          <button type="button" id="range-btn" class="range-pick-btn" aria-label="Pick date range">From today</button>
+          <button type="button" id="range-today" class="range-today-btn" title="From today" disabled>Today</button>
+          <input id="date-from" type="hidden" aria-label="From date" />
+          <input id="date-to" type="hidden" aria-label="To date" />
+        </div>
+        <div class="filter-group cat-group">
+          <button type="button" id="cat-picker-btn" class="filter-pick-btn hidden" aria-haspopup="true" aria-expanded="false">Categories</button>
+          <button type="button" id="cat-all" class="filter-all-btn" title="All categories" disabled>All</button>
+        </div>
+        <div class="filter-group loc-group">
+          <button type="button" id="loc-picker-btn" class="filter-pick-btn hidden" aria-haspopup="true" aria-expanded="false">Venues</button>
+          <button type="button" id="loc-all" class="filter-all-btn" title="All venues" disabled>All</button>
+        </div>
+        <div class="event-toggles">
+          <label><input type="checkbox" id="hide-allday" /> Hide all-day</label>
+          <label><input type="checkbox" id="hide-multiday" /> Hide multi-day</label>
+        </div>
+      </div>
+    </div>
+    <div class="section-head month-nav-head" id="month-nav">
+      <div class="month-nav-center">
+        <button type="button" id="month-prev" class="icon-btn" aria-label="Previous month">‹</button>
+        <button type="button" id="month-title" class="month-title-btn" aria-label="Jump to month">Upcoming</button>
+        <button type="button" id="month-next" class="icon-btn" aria-label="Next month">›</button>
+      </div>
+      <div class="month-nav-aside">
+        <span id="result-count" class="muted"></span>
+        <button type="button" id="stars-clear" class="btn ghost stars-clear hidden">Clear stars</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="cat-popup" class="filter-popup hidden" role="dialog" aria-label="Categories">
+    <div class="filter-popup-head"><span>Categories</span></div>
+    <div id="cat-checks" class="filter-checks"></div>
+    <div class="filter-popup-actions">
+      <button type="button" id="cat-clear" class="btn ghost">Clear</button>
+      <button type="button" id="cat-done" class="btn primary">Done</button>
+    </div>
+  </div>
+  <div id="loc-popup" class="filter-popup hidden" role="dialog" aria-label="Venues">
+    <div class="filter-popup-head"><span>Venues</span></div>
+    <div id="loc-checks" class="filter-checks"></div>
+    <div class="filter-popup-actions">
+      <button type="button" id="loc-clear" class="btn ghost">Clear</button>
+      <button type="button" id="loc-done" class="btn primary">Done</button>
+    </div>
+  </div>
+
+  <div id="month-popup" class="month-popup hidden" role="dialog" aria-label="Jump to month"></div>
+  <div id="range-popup" class="range-popup hidden" role="dialog" aria-label="Date range"></div>
+  <div id="settings-popup" class="settings-popup hidden" role="dialog" aria-label="Settings"></div>
+
+  <main>
+    <section id="view-list" class="view active" aria-label="Event list">
+      <div id="list-cards" class="card-stack"></div>
+      <div id="list-table-wrap" class="table-wrap hidden">
+        <table class="event-table">
+          <thead>
+            <tr>
+              <th class="col-star"></th>
+              <th class="col-img">Img</th>
+              <th class="col-date">Start</th>
+              <th class="col-date">End</th>
+              <th class="col-time">Time</th>
+              <th>Title</th>
+              <th>Location</th>
+            </tr>
+          </thead>
+          <tbody id="list-table-body"></tbody>
+        </table>
+      </div>
+      <p id="list-empty" class="empty hidden">No upcoming events.</p>
+    </section>
+
+    <section id="view-rails" class="view" aria-label="Timeline rails" hidden>
+      <div class="rails-toolbar">
+        <div class="rails-modes" role="tablist" aria-label="Rails layout">
+          <button type="button" class="rails-mode-btn active" data-rails-layout="days" aria-selected="true">Days</button>
+          <button type="button" class="rails-mode-btn" data-rails-layout="cards" aria-selected="false">Cards</button>
+        </div>
+      </div>
+      <div class="rails-wrap">
+        <div id="rails-fade-start" class="rails-fade rails-fade-start hidden" aria-hidden="true"></div>
+        <div id="rails-scroll" class="rails-scroll" tabindex="0">
+          <div id="rails-track" class="rails-track"></div>
+          <div id="rails-loader" class="rails-loader hidden" aria-live="polite">
+            <span class="rails-spinner" aria-hidden="true"></span>
+            <span>Loading next week…</span>
+          </div>
+        </div>
+        <div id="rails-fade" class="rails-fade rails-fade-end hidden" aria-hidden="true"></div>
+      </div>
+      <p id="rails-empty" class="empty hidden">No events in this period.</p>
+    </section>
+
+    <section id="view-posters" class="view" aria-label="Posters" hidden>
+      <div id="poster-mosaic" class="poster-mosaic"></div>
+      <p id="posters-empty" class="empty hidden">No posters this month.</p>
+    </section>
+
+    <section id="view-calendar" class="view" aria-label="Calendar" hidden>
+      <div class="cal-toolbar">
+        <div class="cal-modes" role="tablist" aria-label="Calendar layout">
+          <button type="button" class="cal-mode-btn active" data-cal-mode="month" aria-selected="true">Month</button>
+          <button type="button" class="cal-mode-btn" data-cal-mode="week" aria-selected="false">Week</button>
+          <button type="button" class="cal-mode-btn" data-cal-mode="day" aria-selected="false">Day</button>
+          <button type="button" class="cal-mode-btn" data-cal-mode="agenda" aria-selected="false">Agenda</button>
+        </div>
+      </div>
+      <div class="cal-layout">
+        <div id="calendar"></div>
+        <aside id="day-agenda" class="day-agenda" aria-label="Selected day">
+          <h2 id="agenda-title">Select a day</h2>
+          <div id="agenda-list"></div>
+        </aside>
+      </div>
+      <div id="cal-agenda-full" class="cal-agenda-full hidden" aria-label="Agenda"></div>
+    </section>
+
+    <section id="view-map" class="view" aria-label="Map" hidden>
+      <div id="map" class="map"></div>
+      <div id="map-sheet" class="map-sheet hidden" role="dialog" aria-modal="false"></div>
+    </section>
+  </main>
+
+  <div id="print-cal" class="print-cal hidden" aria-hidden="true"></div>
+
+  <div id="detail" class="detail hidden" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <div class="detail-backdrop" data-close></div>
+    <article class="detail-panel">
+      <button type="button" class="detail-close" data-close aria-label="Close">×</button>
+      <button type="button" id="detail-hero" class="detail-hero" aria-label="View full image"></button>
+      <div class="detail-body">
+        <p id="detail-cats" class="chips detail-chips"></p>
+        <div class="detail-title-row">
+          <h2 id="detail-title"></h2>
+          <button type="button" id="detail-star" class="star-btn" aria-label="Star event">☆</button>
+        </div>
+        <p id="detail-when" class="meta"></p>
+        <p id="detail-where" class="meta"></p>
+        <p id="detail-map-hint" class="meta muted hidden">Map unavailable for this venue</p>
+        <p id="detail-artist" class="meta hidden"></p>
+        <div id="detail-notes" class="notes"></div>
+        <div id="detail-mini-map" class="mini-map hidden"></div>
+        <a id="btn-navigate" class="btn secondary navigate-btn hidden" target="_blank" rel="noopener">Navigate</a>
+        <div class="actions">
+          <div class="cal-menu-wrap">
+            <button type="button" id="btn-cal" class="btn primary" aria-haspopup="true" aria-expanded="false">Calendar</button>
+            <div id="cal-menu" class="cal-menu hidden" role="menu">
+              <a id="btn-gcal" class="cal-menu-item" target="_blank" rel="noopener" role="menuitem">Google Calendar</a>
+              <button type="button" id="btn-ics" class="cal-menu-item" role="menuitem">Download .ics</button>
+            </div>
+          </div>
+          <button type="button" id="btn-share" class="btn secondary">Share</button>
+        </div>
+        <div id="share-row" class="share-row hidden">
+          <button type="button" data-share="copy" class="btn ghost">Copy link</button>
+          <a data-share="whatsapp" class="btn ghost" target="_blank" rel="noopener">WhatsApp</a>
+          <a data-share="facebook" class="btn ghost" target="_blank" rel="noopener">Facebook</a>
+          <a data-share="x" class="btn ghost" target="_blank" rel="noopener">X</a>
+          <a data-share="mail" class="btn ghost">Mail</a>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Full image">
+    <button type="button" class="lightbox-close" data-lightbox-close aria-label="Close">×</button>
+    <img id="lightbox-img" alt="" />
+  </div>
+
+  <div id="about" class="about hidden" role="dialog" aria-modal="true" aria-label="About">
+    <div class="about-backdrop" data-about-close></div>
+    <div class="about-panel">
+      <button type="button" class="detail-close" data-about-close aria-label="Close">×</button>
+      <p class="about-name">Alex of Rhodes</p>
+      <p class="about-links">
+        <a class="plain-link" href="mailto:alexofrhodes@gmail.com">alexofrhodes@gmail.com</a>
+        <a class="plain-link" href="https://github.com/alexofrhodes" target="_blank" rel="noopener">github.com/alexofrhodes</a>
+      </p>
+      <p class="muted about-note">Stars stay in this browser only.</p>
+    </div>
+  </div>
+
+  <button type="button" id="scroll-top" class="scroll-top" aria-label="Scroll to top">↑</button>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <script src="js/site.js"></script>
+</body>
+</html>

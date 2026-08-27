@@ -1,0 +1,2723 @@
+(() => {
+  "use strict";
+
+  const SETTINGS_KEY = "events-site-settings-v1";
+  const ALL_VIEWS = ["cards", "rails", "table", "posters", "calendar", "map", "starred"];
+  const CAL_MODES = ["month", "week", "day", "agenda"];
+  const RAILS_LAYOUTS = ["days", "cards"];
+  const FC_VIEWS = { month: "dayGridMonth", week: "timeGridWeek", day: "timeGridDay" };
+
+  const state = {
+    data: null,
+    events: [],
+    filtered: [],
+    view: "cards",
+    density: "cards",
+    calMode: "month",
+    railsLayout: "days",
+    railsHorizon: "",
+    railsLoading: false,
+    focusMonth: null,
+    agendaDay: "",
+    categories: new Set(),
+    venues: new Set(),
+    search: "",
+    dateFrom: "",
+    dateTo: "",
+    hideAllDay: false,
+    hideMultiDay: false,
+    starred: new Set(),
+    cardsPerRow: 3,
+    groupToolbar: true,
+    lang: "en",
+    rawEvents: [],
+    enabledViews: new Set(ALL_VIEWS),
+    printEnabled: true,
+    map: null,
+    clusters: null,
+    miniMap: null,
+    calendar: null,
+    selected: null,
+    heroSrc: "",
+    deferredInstall: null,
+    _ignoreDatesSet: false,
+  };
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+  function parseEnabledViews() {
+    const list = window.SITE_VIEWS;
+    if (Array.isArray(list) && list.length) {
+      const set = new Set();
+      list.forEach((row) => {
+        if (!Array.isArray(row) || row.length < 2) return;
+        const name = String(row[0] || "").toLowerCase();
+        if (ALL_VIEWS.includes(name) && row[1]) set.add(name);
+      });
+      return set.size ? set : new Set(ALL_VIEWS);
+    }
+    const raw = (document.body.dataset.views || "").trim();
+    if (!raw) return new Set(ALL_VIEWS);
+    const set = new Set(
+      raw
+        .split(/[\s,]+/)
+        .map((v) => v.trim().toLowerCase())
+        .filter((v) => ALL_VIEWS.includes(v))
+    );
+    return set.size ? set : new Set(ALL_VIEWS);
+  }
+
+  function parsePrintEnabled() {
+    if (typeof window.SITE_PRINT === "boolean") return window.SITE_PRINT;
+    const raw = (document.body.dataset.print || "true").trim().toLowerCase();
+    return !["0", "false", "off", "no"].includes(raw);
+  }
+
+  function applyViewConfig() {
+    $$(".top .views > .view-btn").forEach((btn) => {
+      btn.classList.toggle("hidden", !state.enabledViews.has(btn.dataset.view));
+    });
+    $$("#views-dd-menu [data-view]").forEach((btn) => {
+      btn.classList.toggle("hidden", !state.enabledViews.has(btn.dataset.view));
+    });
+    syncViewsDropdown();
+    updatePrintButton();
+    requestAnimationFrame(refreshHScrollFades);
+  }
+
+  function viewLabel(name) {
+    const btn = $(`.top .views > .view-btn[data-view="${name}"]`);
+    return (btn && btn.textContent.trim()) || name;
+  }
+
+  function syncViewsDropdown() {
+    const label = $("#views-dd-label");
+    if (label) label.textContent = viewLabel(state.view);
+    $$("#views-dd-menu [data-view]").forEach((btn) => {
+      const on = btn.dataset.view === state.view;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
+  function closeViewsDropdown() {
+    const menu = $("#views-dd-menu");
+    const btn = $("#views-dd-btn");
+    if (menu) menu.classList.add("hidden");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleViewsDropdown(e) {
+    e.stopPropagation();
+    const menu = $("#views-dd-menu");
+    const btn = $("#views-dd-btn");
+    if (!menu || !btn) return;
+    closeFiltersPanel();
+    const open = menu.classList.contains("hidden");
+    menu.classList.toggle("hidden", !open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function isNarrowToolbar() {
+    return window.matchMedia("(max-width: 639px)").matches;
+  }
+
+  function useGroupedToolbar() {
+    return isNarrowToolbar() && state.groupToolbar;
+  }
+
+  function applyToolbarLayout() {
+    document.body.classList.toggle("toolbar-rail", !state.groupToolbar && isNarrowToolbar());
+    if (!useGroupedToolbar()) closeFiltersPanel();
+    syncFiltersDdBtn();
+    requestAnimationFrame(refreshHScrollFades);
+  }
+
+  function closeFiltersPanel() {
+    const wrap = $("#filters-wrap");
+    const btn = $("#filters-dd-btn");
+    if (wrap) wrap.classList.remove("is-open");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+    $("#cat-popup")?.classList.add("hidden");
+    $("#loc-popup")?.classList.add("hidden");
+  }
+
+  function toggleFiltersPanel(e) {
+    e.stopPropagation();
+    if (!useGroupedToolbar()) return;
+    const wrap = $("#filters-wrap");
+    const btn = $("#filters-dd-btn");
+    if (!wrap || !btn) return;
+    closeViewsDropdown();
+    const open = !wrap.classList.contains("is-open");
+    if (open) {
+      wrap.classList.add("is-open");
+      btn.setAttribute("aria-expanded", "true");
+    } else {
+      closeFiltersPanel();
+    }
+  }
+
+  function updatePrintButton() {
+    const btn = $("#btn-print");
+    if (!btn) return;
+    btn.classList.toggle("hidden", !state.printEnabled || state.view === "rails");
+  }
+
+  function firstEnabledView() {
+    return ALL_VIEWS.find((v) => state.enabledViews.has(v)) || "cards";
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== "object") return;
+      if (data.view === "list") data.view = "cards";
+      if (ALL_VIEWS.includes(data.view)) state.view = data.view;
+      state.density = state.view === "table" ? "table" : "cards";
+      const month = data.focusMonth || data.listMonth;
+      if (typeof month === "string" && /^\d{4}-\d{2}$/.test(month)) state.focusMonth = month;
+      if (Array.isArray(data.categories)) state.categories = new Set(data.categories.filter(Boolean));
+      if (Array.isArray(data.venues)) state.venues = new Set(data.venues.filter(Boolean));
+      else if (typeof data.location === "string" && data.location) state.venues = new Set([data.location]);
+      if (typeof data.search === "string") state.search = data.search;
+      if (typeof data.dateFrom === "string") state.dateFrom = data.dateFrom;
+      if (typeof data.dateTo === "string") state.dateTo = data.dateTo;
+      state.hideAllDay = Boolean(data.hideAllDay);
+      state.hideMultiDay = Boolean(data.hideMultiDay);
+      if (Array.isArray(data.starred)) {
+        state.starred = new Set(data.starred.filter(Boolean).map(String));
+      }
+      if ([1, 2, 3].includes(Number(data.cardsPerRow))) {
+        state.cardsPerRow = Number(data.cardsPerRow);
+      } else if (Number(data.cardsPerRow) === 4) {
+        state.cardsPerRow = 3;
+      }
+      if (typeof data.groupToolbar === "boolean") state.groupToolbar = data.groupToolbar;
+      if (data.lang === "en" || data.lang === "el") state.lang = data.lang;
+      if (CAL_MODES.includes(data.calMode)) state.calMode = data.calMode;
+      if (RAILS_LAYOUTS.includes(data.railsLayout)) state.railsLayout = data.railsLayout;
+      if (typeof data.railsHorizon === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.railsHorizon)) {
+        state.railsHorizon = data.railsHorizon;
+      }
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function saveSettings() {
+    try {
+      localStorage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify({
+          view: state.view,
+          focusMonth: state.focusMonth,
+          categories: [...state.categories],
+          venues: [...state.venues],
+          search: state.search,
+          dateFrom: state.dateFrom,
+          dateTo: state.dateTo,
+          hideAllDay: state.hideAllDay,
+          hideMultiDay: state.hideMultiDay,
+          starred: [...state.starred],
+          cardsPerRow: state.cardsPerRow,
+          groupToolbar: state.groupToolbar,
+          lang: state.lang,
+          calMode: state.calMode,
+          railsLayout: state.railsLayout,
+          railsHorizon: state.railsHorizon,
+        })
+      );
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function pickLocalized(ev, base) {
+    const active = (ev[base] || "").trim();
+    const original = (ev[`${base}Original`] || "").trim();
+    const translated = (ev[`${base}Translated`] || "").trim();
+    if (state.lang === "el") return original || active || translated;
+    return translated || active || original;
+  }
+
+  function projectEvent(ev) {
+    return {
+      ...ev,
+      title: pickLocalized(ev, "title"),
+      notes: pickLocalized(ev, "notes"),
+      location:
+        state.lang === "el"
+          ? (ev.locationOriginal || ev.location || ev.locationTranslated || "").trim()
+          : (ev.locationTranslated || ev.location || ev.locationOriginal || "").trim(),
+    };
+  }
+
+  function rebuildEventsFromLang() {
+    const source = state.rawEvents.length
+      ? state.rawEvents
+      : Array.isArray(state.data && state.data.events)
+        ? state.data.events
+        : [];
+    state.events = source.map(projectEvent).sort(sortSoonest);
+  }
+
+  function syncLangButtons() {
+    const en = $("#lang-en");
+    const el = $("#lang-el");
+    if (en) {
+      en.classList.toggle("active", state.lang === "en");
+      en.setAttribute("aria-pressed", state.lang === "en" ? "true" : "false");
+    }
+    if (el) {
+      el.classList.toggle("active", state.lang === "el");
+      el.setAttribute("aria-pressed", state.lang === "el" ? "true" : "false");
+    }
+    document.documentElement.lang = state.lang === "el" ? "el" : "en";
+  }
+
+  function setLang(lang) {
+    if (lang !== "en" && lang !== "el") return;
+    const changed = state.lang !== lang;
+    state.lang = lang;
+    if (changed) state.venues.clear();
+    rebuildEventsFromLang();
+    syncLangButtons();
+    saveSettings();
+    renderCategoryPicker();
+    renderLocationFilter();
+    applyFilters();
+    if (state.selected) {
+      const id = state.selected.id;
+      if (!$("#detail").classList.contains("hidden")) openDetail(id);
+    }
+  }
+
+  function applySettingsToForm() {
+    $("#search").value = state.search || "";
+    $("#date-from").value = state.dateFrom || "";
+    $("#date-to").value = state.dateTo || "";
+    $("#hide-allday").checked = state.hideAllDay;
+    $("#hide-multiday").checked = state.hideMultiDay;
+    updateRangeBtn();
+    applyCardsPerRow();
+  }
+
+  function applyCardsPerRow() {
+    const n = [1, 2, 3].includes(state.cardsPerRow) ? state.cardsPerRow : 3;
+    state.cardsPerRow = n;
+    document.documentElement.style.setProperty("--cards-per-row", String(n));
+  }
+
+  function updateRangeBtn() {
+    const btn = $("#range-btn");
+    if (!btn) return;
+    const from = state.dateFrom;
+    const to = state.dateTo;
+    const today = todayISO();
+    const isFromToday = from === today && !to;
+    if (!from && !to) {
+      btn.textContent = "Any date";
+      btn.classList.remove("active");
+    } else if (isFromToday) {
+      btn.textContent = "From today";
+      btn.classList.remove("active");
+    } else {
+      const fmtShort = (iso) => {
+        const d = parseISO(iso);
+        return d ? d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) : iso;
+      };
+      const parts = [];
+      if (from) parts.push(fmtShort(from));
+      parts.push("–");
+      if (to) parts.push(fmtShort(to));
+      else parts.push("…");
+      btn.textContent = parts.join(" ");
+      btn.classList.add("active");
+    }
+    const todayBtn = $("#range-today");
+    if (todayBtn) todayBtn.disabled = isFromToday;
+    syncFiltersDdBtn();
+  }
+
+  function todayISO() {
+    return isoDate(new Date());
+  }
+
+  function isoDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function parseISO(value) {
+    if (!value) return null;
+    const [y, m, d] = value.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  }
+
+  function addDays(date, n) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    d.setDate(d.getDate() + n);
+    return d;
+  }
+
+  function eventStart(ev) {
+    return ev.date || "";
+  }
+
+  function eventEnd(ev) {
+    return ev.endDate || ev.date || "";
+  }
+
+  function isMultiDay(ev) {
+    return Boolean(ev.endDate && ev.endDate !== ev.date);
+  }
+
+  function isAllDay(ev) {
+    return !ev.time;
+  }
+
+  function overlapsCustomRange(ev) {
+    const start = eventStart(ev);
+    const end = eventEnd(ev);
+    if (!start) return false;
+    if (state.dateFrom && end < state.dateFrom) return false;
+    if (state.dateTo && start > state.dateTo) return false;
+    return true;
+  }
+
+  function fmtWhen(ev) {
+    const start = parseISO(ev.date);
+    if (!start) return ev.time || "";
+    const opts = { weekday: "short", month: "short", day: "numeric", year: "numeric" };
+    let text = start.toLocaleDateString(undefined, opts);
+    if (ev.endDate && ev.endDate !== ev.date) {
+      const end = parseISO(ev.endDate);
+      if (end) text += ` – ${end.toLocaleDateString(undefined, opts)}`;
+    }
+    if (ev.time) text += ` · ${ev.time}`;
+    return text;
+  }
+
+  function imageUrl(ev, thumb) {
+    const path = thumb ? ev.thumb || ev.image : ev.image || ev.thumb;
+    return path || "";
+  }
+
+  function navigateUrl(ev) {
+    if (ev.lat == null || ev.lng == null) return "";
+    return `https://www.google.com/maps/dir/?api=1&destination=${ev.lat},${ev.lng}`;
+  }
+
+  function sortSoonest(a, b) {
+    return (
+      (a.date || "").localeCompare(b.date || "") ||
+      (a.time || "").localeCompare(b.time || "") ||
+      (a.title || "").localeCompare(b.title || "")
+    );
+  }
+
+  function monthKey(ev) {
+    return (ev.date || "").slice(0, 7);
+  }
+
+  function monthLabelFromKey(key) {
+    const [y, m] = (key || "").split("-").map(Number);
+    if (!y || !m) return key || "";
+    return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  }
+
+  function monthKeyFromDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  function isStarred(id) {
+    return state.starred.has(String(id || ""));
+  }
+
+  function toggleStar(id, ev) {
+    if (ev) ev.stopPropagation();
+    const key = String(id || "");
+    if (!key) return;
+    if (state.starred.has(key)) state.starred.delete(key);
+    else state.starred.add(key);
+    saveSettings();
+    syncStarButtons(key);
+    if (state.view === "starred") applyFilters();
+  }
+
+  function starButton(id) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "star-btn";
+    btn.dataset.star = String(id || "");
+    btn.setAttribute("aria-label", isStarred(id) ? "Unstar event" : "Star event");
+    btn.setAttribute("aria-pressed", isStarred(id) ? "true" : "false");
+    btn.textContent = isStarred(id) ? "★" : "☆";
+    btn.addEventListener("click", (e) => toggleStar(id, e));
+    return btn;
+  }
+
+  function clearAllStars() {
+    if (!state.starred.size) return;
+    state.starred.clear();
+    saveSettings();
+    $$(".star-btn").forEach((btn) => {
+      btn.textContent = "☆";
+      btn.setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-label", "Star event");
+    });
+    if (state.view === "starred") applyFilters();
+  }
+
+  function syncStarButtons(id) {
+    const on = isStarred(id);
+    const key = String(id);
+    $$(".star-btn").forEach((btn) => {
+      if (String(btn.dataset.star || "") !== key) return;
+      btn.textContent = on ? "★" : "☆";
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.setAttribute("aria-label", on ? "Unstar event" : "Star event");
+    });
+  }
+
+  function matchesFilters(ev) {
+    if (state.hideAllDay && isAllDay(ev)) return false;
+    if (state.hideMultiDay && isMultiDay(ev)) return false;
+    if (state.categories.size) {
+      const cats = ev.category || [];
+      if (![...state.categories].some((c) => cats.includes(c))) return false;
+    }
+    if (state.venues.size && !state.venues.has(ev.location || "")) return false;
+    if (state.view !== "starred" && (state.dateFrom || state.dateTo)) {
+      if (!overlapsCustomRange(ev)) return false;
+    }
+    if (state.search) {
+      const hay = [ev.title, ev.location, ev.artist, ev.notes, ...(ev.category || [])]
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(state.search)) return false;
+    }
+    return true;
+  }
+
+  function applyFilters() {
+    let list = state.events.filter(matchesFilters);
+    if (state.view === "starred") {
+      const today = todayISO();
+      list = list.filter((ev) => isStarred(ev.id) && eventEnd(ev) >= today);
+    }
+    state.filtered = list.sort(sortSoonest);
+    ensureFocusMonth();
+    saveSettings();
+    renderAll();
+  }
+
+  function availableMonthKeys() {
+    return [...new Set(state.filtered.map(monthKey).filter(Boolean))].sort();
+  }
+
+  function ensureFocusMonth() {
+    if (state.focusMonth && /^\d{4}-\d{2}$/.test(state.focusMonth)) return;
+    const keys = availableMonthKeys();
+    const now = monthKeyFromDate(new Date());
+    state.focusMonth = keys.includes(now) ? now : keys[0] || now;
+  }
+
+  function setFocusMonth(key, fromCalendar = false) {
+    if (!key || !/^\d{4}-\d{2}$/.test(key)) return;
+    const changed = key !== state.focusMonth;
+    state.focusMonth = key;
+    if (changed) saveSettings();
+    if (!fromCalendar && state.calendar) {
+      const cur = monthKeyFromDate(state.calendar.getDate());
+      if (cur !== key) {
+        const [y, m] = key.split("-").map(Number);
+        state._ignoreDatesSet = true;
+        state.calendar.gotoDate(new Date(y, m - 1, 1));
+        state._ignoreDatesSet = false;
+      }
+    }
+    updateMonthNav();
+    if (state.view === "cards" || state.view === "table") renderList();
+    if (state.view === "posters") renderPosters();
+    syncOpenPickersToFocusMonth();
+  }
+
+  function syncOpenPickersToFocusMonth() {
+    const key = state.focusMonth;
+    if (!key || !/^\d{4}-\d{2}$/.test(key)) return;
+    const [y, m] = key.split("-").map(Number);
+    const monthPopup = $("#month-popup");
+    if (monthPopup && !monthPopup.classList.contains("hidden")) {
+      renderMonthPopup();
+    }
+    const rangePopup = $("#range-popup");
+    if (rangePopup && !rangePopup.classList.contains("hidden")) {
+      rangeState.monthL = new Date(y, m - 1, 1);
+      renderRangePopup();
+    }
+  }
+
+  function setView(name) {
+    if (!name) return;
+    if (name === "list") name = "cards";
+    if (!state.enabledViews.has(name)) name = firstEnabledView();
+    state.view = name;
+    const isBrowse = name === "cards" || name === "table";
+    const isList = isBrowse || name === "starred";
+    const usesMonthNav = isList || name === "posters";
+    state.density = name === "table" ? "table" : "cards";
+    document.body.classList.toggle("view-map", name === "map");
+    document.body.classList.toggle("view-list", isBrowse);
+    document.body.classList.toggle("view-rails", name === "rails");
+    document.body.classList.toggle("view-starred", name === "starred");
+    document.body.classList.toggle("view-calendar", name === "calendar");
+    document.body.classList.toggle("view-posters", name === "posters");
+    $("#month-nav").classList.toggle("hidden", name === "rails" || !usesMonthNav);
+    $("#month-prev").classList.toggle("hidden", name === "starred");
+    $("#month-next").classList.toggle("hidden", name === "starred");
+    const clearStars = $("#stars-clear");
+    if (clearStars) clearStars.classList.toggle("hidden", name !== "starred");
+    const dateFrom = $("#date-from");
+    const dateTo = $("#date-to");
+    dateFrom.disabled = name === "starred";
+    dateTo.disabled = name === "starred";
+    const rangeBtn = $("#range-btn");
+    if (rangeBtn) rangeBtn.disabled = name === "starred";
+    const rangeToday = $("#range-today");
+    if (rangeToday) {
+      rangeToday.disabled = name === "starred" || (state.dateFrom === todayISO() && !state.dateTo);
+    }
+    $$(".top .views > .view-btn").forEach((btn) => {
+      const on = btn.dataset.view === name;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    syncViewsDropdown();
+    closeViewsDropdown();
+    ["list", "rails", "calendar", "map", "posters"].forEach((id) => {
+      const el = $(`#view-${id}`);
+      if (!el) return;
+      const on = id === "list" ? isList : id === name;
+      el.classList.toggle("active", on);
+      el.hidden = !on;
+    });
+    saveSettings();
+    updatePrintButton();
+    applyFilters();
+    if (name === "map") {
+      requestAnimationFrame(() => {
+        ensureMap();
+        if (state.map) state.map.invalidateSize();
+        const focus = state._mapFocus;
+        state._mapFocus = null;
+        if (focus && focus.lat != null && focus.lng != null && state.map) {
+          state.map.setView([Number(focus.lat), Number(focus.lng)], 15);
+          const focused = findEvent(focus.id);
+          if (focused) showMapSheet(focused);
+        } else {
+          fitMap();
+        }
+      });
+    }
+    if (name === "rails") {
+      ensureRailsHorizon();
+      requestAnimationFrame(() => renderRails());
+    }
+    if (name === "calendar") {
+      requestAnimationFrame(() => {
+        ensureCalendar();
+        applyCalendarOptions();
+        applyCalMode(state.calMode, true);
+        syncCalendar();
+        setFocusMonth(state.focusMonth || monthKeyFromDate(new Date()));
+        if (!state.agendaDay) state.agendaDay = todayISO();
+        if (state.calMode === "month") {
+          paintAgendaDay();
+          renderAgenda();
+        }
+        if (state.calendar) state.calendar.updateSize();
+      });
+    }
+  }
+
+  function allCategories() {
+    const cats = new Set();
+    state.events.forEach((ev) => (ev.category || []).forEach((c) => cats.add(c)));
+    return [...cats].sort((a, b) => a.localeCompare(b));
+  }
+
+  function syncFilterAllBtn(sel, size) {
+    const btn = $(sel);
+    if (!btn) return;
+    btn.disabled = !size;
+  }
+
+  function updateCatButton() {
+    const btn = $("#cat-picker-btn");
+    const n = state.categories.size;
+    btn.textContent = n ? `Categories (${n})` : "Categories";
+    btn.classList.toggle("active", n > 0);
+    syncFilterAllBtn("#cat-all", n);
+    syncFiltersDdBtn();
+  }
+
+  function updateLocButton() {
+    const btn = $("#loc-picker-btn");
+    if (!btn) return;
+    const n = state.venues.size;
+    btn.textContent = n ? `Venues (${n})` : "Venues";
+    btn.classList.toggle("active", n > 0);
+    syncFilterAllBtn("#loc-all", n);
+    syncFiltersDdBtn();
+  }
+
+  function syncFiltersDdBtn() {
+    const filtersBtn = $("#filters-dd-btn");
+    if (!filtersBtn) return;
+    const active =
+      state.categories.size > 0 ||
+      state.venues.size > 0 ||
+      state.hideAllDay ||
+      state.hideMultiDay ||
+      (state.dateFrom && state.dateFrom !== todayISO()) ||
+      Boolean(state.dateTo);
+    filtersBtn.classList.toggle("active", active);
+  }
+
+  function renderCategoryPicker() {
+    const list = allCategories();
+    const btn = $("#cat-picker-btn");
+    const host = $("#cat-checks");
+    const group = $(".cat-group");
+    host.innerHTML = "";
+    if (!list.length) {
+      btn.classList.add("hidden");
+      if (group) group.classList.add("hidden");
+      state.categories.clear();
+      updateCatButton();
+      requestAnimationFrame(refreshHScrollFades);
+      return;
+    }
+    btn.classList.remove("hidden");
+    if (group) group.classList.remove("hidden");
+    [...state.categories].forEach((c) => {
+      if (!list.includes(c)) state.categories.delete(c);
+    });
+    list.forEach((cat) => {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = cat;
+      input.checked = state.categories.has(cat);
+      input.addEventListener("change", () => {
+        if (input.checked) state.categories.add(cat);
+        else state.categories.delete(cat);
+        updateCatButton();
+        applyFilters();
+      });
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(cat));
+      host.appendChild(label);
+    });
+    updateCatButton();
+    requestAnimationFrame(refreshHScrollFades);
+  }
+
+  function allVenues() {
+    return [...new Set(state.events.map((e) => e.location).filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b)
+    );
+  }
+
+  function renderLocationFilter() {
+    const list = allVenues();
+    const btn = $("#loc-picker-btn");
+    const host = $("#loc-checks");
+    const group = $(".loc-group");
+    if (!btn || !host) return;
+    host.innerHTML = "";
+    if (list.length < 2) {
+      btn.classList.add("hidden");
+      if (group) group.classList.add("hidden");
+      state.venues.clear();
+      updateLocButton();
+      requestAnimationFrame(refreshHScrollFades);
+      return;
+    }
+    btn.classList.remove("hidden");
+    if (group) group.classList.remove("hidden");
+    [...state.venues].forEach((v) => {
+      if (!list.includes(v)) state.venues.delete(v);
+    });
+    list.forEach((loc) => {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = loc;
+      input.checked = state.venues.has(loc);
+      input.addEventListener("change", () => {
+        if (input.checked) state.venues.add(loc);
+        else state.venues.delete(loc);
+        updateLocButton();
+        applyFilters();
+      });
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(loc));
+      host.appendChild(label);
+    });
+    updateLocButton();
+    requestAnimationFrame(refreshHScrollFades);
+  }
+
+  function clearCategoryFilter() {
+    state.categories.clear();
+    $$("#cat-checks input").forEach((input) => {
+      input.checked = false;
+    });
+    updateCatButton();
+    applyFilters();
+  }
+
+  function clearLocationFilter() {
+    state.venues.clear();
+    $$("#loc-checks input").forEach((input) => {
+      input.checked = false;
+    });
+    updateLocButton();
+    applyFilters();
+  }
+
+  function closeFilterPopups() {
+    $("#cat-popup")?.classList.add("hidden");
+    $("#loc-popup")?.classList.add("hidden");
+    $("#cat-picker-btn")?.setAttribute("aria-expanded", "false");
+    $("#loc-picker-btn")?.setAttribute("aria-expanded", "false");
+    removeBackdrop();
+  }
+
+  function toggleFilterPopup(popupSel, btnSel, e) {
+    e.stopPropagation();
+    const popup = $(popupSel);
+    const btn = $(btnSel);
+    const wasOpen = !popup.classList.contains("hidden");
+    $("#cat-popup")?.classList.add("hidden");
+    $("#loc-popup")?.classList.add("hidden");
+    $("#cat-picker-btn")?.setAttribute("aria-expanded", "false");
+    $("#loc-picker-btn")?.setAttribute("aria-expanded", "false");
+    if (!wasOpen) {
+      popup.classList.remove("hidden");
+      btn.setAttribute("aria-expanded", "true");
+      addBackdrop(popup, closeFilterPopups);
+    } else {
+      closeFilterPopups();
+    }
+  }
+
+  function updateHScrollFade(wrap) {
+    if (!wrap) return;
+    const scroller = wrap.querySelector(".hscroll");
+    const start = wrap.querySelector('[data-hscroll-fade="start"]');
+    const end = wrap.querySelector('[data-hscroll-fade="end"]');
+    if (!scroller) return;
+    const canScroll = scroller.scrollWidth > scroller.clientWidth + 4;
+    const atStart = scroller.scrollLeft <= 4;
+    const atEnd = scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 4;
+    if (start) start.classList.toggle("hidden", !canScroll || atStart);
+    if (end) end.classList.toggle("hidden", !canScroll || atEnd);
+  }
+
+  function bindHScroll(wrap) {
+    if (!wrap) return;
+    const scroller = wrap.querySelector(".hscroll");
+    if (!scroller) return;
+    const update = () => updateHScrollFade(wrap);
+    scroller.addEventListener("scroll", update, { passive: true });
+    update();
+  }
+
+  function refreshHScrollFades() {
+    $$(".hscroll-wrap").forEach(updateHScrollFade);
+  }
+
+  function cardButton(ev) {
+    const article = document.createElement("article");
+    article.className = "event-card";
+    article.tabIndex = 0;
+    const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+    const full = imageUrl(ev, false) || thumb;
+    const cats = (ev.category || [])
+      .slice(0, 2)
+      .map((c) => `<span>${escapeHtml(c)}</span>`)
+      .join("");
+    const imgHtml = thumb
+      ? `<img class="thumb-img" src="${escapeAttr(thumb)}" alt="" loading="lazy" data-full="${escapeAttr(full)}" />`
+      : "";
+    article.innerHTML = `
+      <div class="thumb">${imgHtml}</div>
+      <div class="body">
+        <h3>${escapeHtml(ev.title || "Untitled")}</h3>
+        <p class="meta">${escapeHtml(fmtWhen(ev))}</p>
+        <p class="meta">${escapeHtml(ev.location || "")}</p>
+        <div class="card-chips">${cats}</div>
+      </div>`;
+    article.prepend(starButton(ev.id));
+    article.addEventListener("click", () => openDetail(ev.id));
+    article.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openDetail(ev.id);
+      }
+    });
+    return article;
+  }
+
+  function tableRow(ev) {
+    const tr = document.createElement("tr");
+    const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+    const imgHtml = thumb
+      ? `<img src="${escapeAttr(thumb)}" alt="" loading="lazy" />`
+      : "";
+    const starTd = document.createElement("td");
+    starTd.className = "col-star";
+    starTd.appendChild(starButton(ev.id));
+    tr.appendChild(starTd);
+    tr.insertAdjacentHTML(
+      "beforeend",
+      `
+      <td class="col-img">${imgHtml}</td>
+      <td class="col-date">${escapeHtml(ev.date || "")}</td>
+      <td class="col-date">${escapeHtml(ev.endDate || "")}</td>
+      <td class="col-time">${escapeHtml(ev.time || "")}</td>
+      <td>${escapeHtml(ev.title || "")}</td>
+      <td>${escapeHtml(ev.location || "")}</td>`
+    );
+    tr.addEventListener("click", () => openDetail(ev.id));
+    return tr;
+  }
+
+  function overlapsMonth(ev, key) {
+    const [y, m] = key.split("-").map(Number);
+    if (!y || !m) return false;
+    const monthStart = `${key}-01`;
+    const monthEnd = isoDate(new Date(y, m, 0));
+    const start = eventStart(ev);
+    const end = eventEnd(ev);
+    return Boolean(start && end >= monthStart && start <= monthEnd);
+  }
+
+  function updateMonthNav() {
+    const btn = $("#month-title");
+    if (state.view === "starred") {
+      btn.textContent = "Starred";
+      $("#month-prev").disabled = true;
+      $("#month-next").disabled = true;
+      return;
+    }
+    const keys = availableMonthKeys();
+    const cur = state.focusMonth || "";
+    btn.textContent = monthLabelFromKey(cur) || "Upcoming";
+    $("#month-prev").disabled = !keys.some((k) => k < cur);
+    $("#month-next").disabled = !keys.some((k) => k > cur);
+  }
+
+  function setBrandTitle(count) {
+    const base = (state.data && state.data.title) || "Events";
+    const titleEl = $("#site-title");
+    if (!titleEl) return;
+    if (count == null || count === "") {
+      titleEl.textContent = base;
+      return;
+    }
+    titleEl.textContent = `${base} (${count})`;
+  }
+
+  function clearResultCount() {
+    const el = $("#result-count");
+    if (el) el.textContent = "";
+  }
+
+  function renderList() {
+    ensureFocusMonth();
+    updateMonthNav();
+    const monthEvents =
+      state.view === "starred"
+        ? state.filtered.slice().sort(sortSoonest)
+        : state.filtered.filter((ev) => overlapsMonth(ev, state.focusMonth)).sort(sortSoonest);
+
+    const cards = $("#list-cards");
+    const tbody = $("#list-table-body");
+    const tableWrap = $("#list-table-wrap");
+    cards.innerHTML = "";
+    tbody.innerHTML = "";
+    const useTable = state.density === "table";
+    cards.classList.toggle("hidden", useTable);
+    tableWrap.classList.toggle("hidden", !useTable);
+    if (useTable) {
+      monthEvents.forEach((ev) => tbody.appendChild(tableRow(ev)));
+    } else {
+      monthEvents.forEach((ev) => cards.appendChild(cardButton(ev)));
+    }
+
+    setBrandTitle(monthEvents.length);
+    clearResultCount();
+    $("#list-empty").classList.toggle("hidden", monthEvents.length > 0);
+    if (state.view === "starred") {
+      $("#list-empty").textContent = "No starred upcoming events.";
+    } else {
+      $("#list-empty").textContent = state.events.length
+        ? "Nothing matches these filters."
+        : "No upcoming events.";
+    }
+  }
+
+  function endOfWeekDate(d) {
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const day = x.getDay();
+    x.setDate(x.getDate() + (day === 0 ? 0 : 7 - day));
+    return x;
+  }
+
+  function endOfNextWeekDate(from = new Date()) {
+    const end = endOfWeekDate(from);
+    end.setDate(end.getDate() + 7);
+    return end;
+  }
+
+  function ensureRailsHorizon() {
+    const today = todayISO();
+    const min = isoDate(endOfNextWeekDate(new Date()));
+    if (!state.railsHorizon || state.railsHorizon < today) state.railsHorizon = min;
+    else if (state.railsHorizon < min) state.railsHorizon = min;
+  }
+
+  function railsDayKeys() {
+    ensureRailsHorizon();
+    const keys = [];
+    let d = parseISO(todayISO());
+    const end = parseISO(state.railsHorizon);
+    if (!d || !end) return keys;
+    while (d <= end) {
+      keys.push(isoDate(d));
+      d = addDays(d, 1);
+    }
+    return keys;
+  }
+
+  function railsEvents() {
+    const today = todayISO();
+    const end = state.railsHorizon || today;
+    return state.filtered.filter((ev) => eventEnd(ev) >= today && eventStart(ev) <= end);
+  }
+
+  function updateRailsFade() {
+    const scroller = $("#rails-scroll");
+    const fadeEnd = $("#rails-fade");
+    const fadeStart = $("#rails-fade-start");
+    if (!scroller || !fadeEnd) return;
+    const canScroll = scroller.scrollWidth > scroller.clientWidth + 4;
+    const atStart = scroller.scrollLeft <= 8;
+    const atEnd = scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 8;
+    if (fadeStart) fadeStart.classList.toggle("hidden", !canScroll || atStart);
+    fadeEnd.classList.toggle("hidden", !canScroll || atEnd);
+  }
+
+  function syncRailsLayoutUi() {
+    $$(".rails-mode-btn").forEach((btn) => {
+      const on = btn.dataset.railsLayout === state.railsLayout;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    const wrap = $(".rails-wrap");
+    if (wrap) {
+      wrap.classList.toggle("rails-layout-days", state.railsLayout === "days");
+      wrap.classList.toggle("rails-layout-cards", state.railsLayout === "cards");
+    }
+  }
+
+  function applyRailsLayout(layout, skipSave = false) {
+    if (!RAILS_LAYOUTS.includes(layout)) layout = "days";
+    state.railsLayout = layout;
+    syncRailsLayoutUi();
+    if (!skipSave) saveSettings();
+    if (state.view === "rails") {
+      renderRails();
+      const sc = $("#rails-scroll");
+      if (sc) sc.scrollLeft = 0;
+    }
+  }
+
+  function renderRailsDays(track, events) {
+    const byDay = new Map();
+    railsDayKeys().forEach((day) => byDay.set(day, []));
+    events.forEach((ev) => {
+      railsDayKeys().forEach((day) => {
+        if (eventStart(ev) <= day && eventEnd(ev) >= day) byDay.get(day).push(ev);
+      });
+    });
+    let total = 0;
+    railsDayKeys().forEach((day) => {
+      const items = byDay.get(day).slice().sort(sortSoonest);
+      total += items.length;
+      const col = document.createElement("div");
+      col.className = "rails-day";
+      const d = parseISO(day);
+      const head = document.createElement("header");
+      head.className = "rails-day-head";
+      head.innerHTML = `<span class="rails-dow">${d.toLocaleDateString(undefined, { weekday: "short" })}</span><span class="rails-date">${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>`;
+      col.appendChild(head);
+      const list = document.createElement("div");
+      list.className = "rails-day-events";
+      if (!items.length) {
+        const none = document.createElement("p");
+        none.className = "rails-none muted";
+        none.textContent = "—";
+        list.appendChild(none);
+      } else {
+        items.forEach((ev) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "rails-card";
+          const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+          btn.innerHTML = `${
+            thumb ? `<span class="rails-thumb" style="background-image:url('${escapeAttr(thumb)}')"></span>` : ""
+          }<span class="rails-card-body"><strong>${escapeHtml(ev.title || "Untitled")}</strong><span class="rails-meta">${escapeHtml(
+            ev.time || "All day"
+          )}${ev.location ? ` · ${escapeHtml(ev.location)}` : ""}</span></span>`;
+          btn.addEventListener("click", () => openDetail(ev.id));
+          list.appendChild(btn);
+        });
+      }
+      col.appendChild(list);
+      track.appendChild(col);
+    });
+    return total;
+  }
+
+  function renderRailsCards(track, events) {
+    const seen = new Set();
+    const unique = [];
+    events
+      .slice()
+      .sort(sortSoonest)
+      .forEach((ev) => {
+        const id = String(ev.id || "");
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        unique.push(ev);
+      });
+    unique.forEach((ev) => {
+      const slide = document.createElement("div");
+      slide.className = "rails-slide";
+      const card = cardButton(ev);
+      card.classList.add("rails-slide-card");
+      slide.appendChild(card);
+      track.appendChild(slide);
+    });
+    return unique.length;
+  }
+
+  function renderRails() {
+    const track = $("#rails-track");
+    const empty = $("#rails-empty");
+    if (!track) return;
+    ensureRailsHorizon();
+    syncRailsLayoutUi();
+    const events = railsEvents();
+    track.innerHTML = "";
+    const total =
+      state.railsLayout === "cards" ? renderRailsCards(track, events) : renderRailsDays(track, events);
+    if (empty) {
+      empty.classList.toggle("hidden", total > 0);
+      empty.textContent = state.events.length ? "No events in this period." : "No upcoming events.";
+    }
+    if (state.view === "rails") {
+      setBrandTitle(total);
+      clearResultCount();
+    }
+    requestAnimationFrame(updateRailsFade);
+  }
+
+  function extendRailsHorizon() {
+    if (state.railsLoading) return;
+    const end = parseISO(state.railsHorizon);
+    if (!end) return;
+    state.railsLoading = true;
+    const loader = $("#rails-loader");
+    if (loader) loader.classList.remove("hidden");
+    // ponytail: client-side data only; short delay signals loading next week chunk
+    setTimeout(() => {
+      const next = endOfWeekDate(addDays(end, 1));
+      state.railsHorizon = isoDate(next);
+      state.railsLoading = false;
+      if (loader) loader.classList.add("hidden");
+      saveSettings();
+      renderRails();
+    }, 400);
+  }
+
+  function onRailsScroll() {
+    updateRailsFade();
+    const scroller = $("#rails-scroll");
+    if (!scroller || state.railsLoading || state.view !== "rails") return;
+    if (scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 48) {
+      extendRailsHorizon();
+    }
+  }
+
+  function applyCalMode(mode, skipSave = false) {
+    if (!CAL_MODES.includes(mode)) mode = "month";
+    state.calMode = mode;
+    $$(".cal-mode-btn").forEach((btn) => {
+      const on = btn.dataset.calMode === mode;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    const layout = $(".cal-layout");
+    const agendaFull = $("#cal-agenda-full");
+    const dayAgenda = $("#day-agenda");
+    if (layout) layout.classList.toggle("hidden", mode === "agenda");
+    if (agendaFull) agendaFull.classList.toggle("hidden", mode !== "agenda");
+    if (dayAgenda) dayAgenda.classList.toggle("hidden", mode !== "month");
+    if (mode === "agenda") {
+      renderCalAgendaFull();
+    } else if (state.calendar && FC_VIEWS[mode]) {
+      state.calendar.changeView(FC_VIEWS[mode]);
+      if (mode === "month") {
+        paintAgendaDay();
+        renderAgenda();
+      }
+      requestAnimationFrame(() => state.calendar && state.calendar.updateSize());
+    }
+    if (!skipSave) saveSettings();
+  }
+
+  function renderCalAgendaFull() {
+    const host = $("#cal-agenda-full");
+    if (!host) return;
+    host.innerHTML = "";
+    const grouped = new Map();
+    state.filtered.forEach((ev) => {
+      const start = eventStart(ev);
+      if (!start) return;
+      if (!grouped.has(start)) grouped.set(start, []);
+      grouped.get(start).push(ev);
+    });
+    const days = [...grouped.keys()].sort();
+    if (!days.length) {
+      const empty = document.createElement("p");
+      empty.className = "agenda-empty";
+      empty.textContent = "No upcoming events.";
+      host.appendChild(empty);
+      return;
+    }
+    days.forEach((day) => {
+      const d = parseISO(day);
+      const head = document.createElement("h2");
+      head.className = "cal-agenda-day-title";
+      head.textContent = d.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+      host.appendChild(head);
+      grouped
+        .get(day)
+        .slice()
+        .sort(sortSoonest)
+        .forEach((ev) => {
+          const row = document.createElement("article");
+          row.className = "agenda-row" + (isAllDay(ev) ? " all-day" : "");
+          row.tabIndex = 0;
+          row.innerHTML = `<h3 class="agenda-title">${escapeHtml(ev.title || "Untitled")}</h3><p class="agenda-meta">${escapeHtml(
+            fmtWhen(ev)
+          )}${ev.location ? ` · ${escapeHtml(ev.location)}` : ""}</p>`;
+          row.addEventListener("click", () => openDetail(ev.id));
+          host.appendChild(row);
+        });
+    });
+  }
+
+  function calendarEvents() {
+    return state.filtered.map((ev) => {
+      const timed = Boolean(ev.time);
+      const start = timed ? `${ev.date}T${ev.time}:00` : ev.date;
+      let end = undefined;
+      if (ev.endDate && ev.endDate !== ev.date) {
+        const d = parseISO(ev.endDate);
+        end = d ? isoDate(addDays(d, 1)) : undefined;
+      }
+      const item = {
+        id: ev.id,
+        title: ev.title || "Untitled",
+        start,
+        allDay: !timed,
+        extendedProps: {
+          location: ev.location || "",
+        },
+      };
+      if (end) item.end = end;
+      return item;
+    });
+  }
+
+  function eventsOnDay(iso) {
+    return state.filtered
+      .filter((ev) => eventStart(ev) && eventStart(ev) <= iso && eventEnd(ev) >= iso)
+      .sort(sortSoonest);
+  }
+
+  function selectAgendaDay(iso) {
+    if (!iso) return;
+    state.agendaDay = iso;
+    paintAgendaDay();
+    renderAgenda();
+  }
+
+  function paintAgendaDay() {
+    $$("#calendar .fc-daygrid-day").forEach((el) => {
+      el.classList.toggle("agenda-selected", el.getAttribute("data-date") === state.agendaDay);
+    });
+  }
+
+  function renderAgenda() {
+    const title = $("#agenda-title");
+    const list = $("#agenda-list");
+    if (!title || !list) return;
+    const day = parseISO(state.agendaDay);
+    title.textContent = day
+      ? day.toLocaleDateString(undefined, {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "Select a day";
+    const items = state.agendaDay ? eventsOnDay(state.agendaDay) : [];
+    list.innerHTML = "";
+    if (!items.length) {
+      const empty = document.createElement("p");
+      empty.className = "agenda-empty";
+      empty.textContent = "No events this day.";
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach((ev) => {
+      const row = document.createElement("article");
+      row.className = "agenda-row" + (isAllDay(ev) ? " all-day" : "");
+      const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+      const img = document.createElement("img");
+      img.className = "agenda-thumb" + (thumb ? "" : " no-img");
+      if (thumb) {
+        img.src = thumb;
+        img.alt = "";
+        img.loading = "lazy";
+      }
+      row.appendChild(img);
+      const info = document.createElement("div");
+      info.style.minWidth = "0";
+      const name = document.createElement("h3");
+      name.className = "agenda-title";
+      name.textContent = ev.title || "Untitled";
+      const meta = document.createElement("p");
+      meta.className = "agenda-meta";
+      const timePart = ev.time || "All day";
+      const locPart = (ev.location || "").trim();
+      meta.textContent = locPart ? `${timePart} · ${locPart}` : timePart;
+      info.appendChild(name);
+      info.appendChild(meta);
+      row.appendChild(info);
+      row.appendChild(starButton(ev.id));
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".star-btn")) return;
+        openDetail(ev.id);
+      });
+      list.appendChild(row);
+    });
+  }
+
+  function renderPosters() {
+    ensureFocusMonth();
+    updateMonthNav();
+    const host = $("#poster-mosaic");
+    const empty = $("#posters-empty");
+    if (!host) return;
+    host.innerHTML = "";
+    const monthEvents = state.filtered
+      .filter((ev) => overlapsMonth(ev, state.focusMonth))
+      .filter((ev) => imageUrl(ev, false) || imageUrl(ev, true))
+      .sort(sortSoonest);
+    monthEvents.forEach((ev) => {
+      const img = imageUrl(ev, false) || imageUrl(ev, true);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "poster-tile";
+      btn.style.backgroundImage = `url('${escapeAttr(img)}')`;
+      btn.setAttribute("aria-label", ev.title || "Event");
+      btn.addEventListener("click", () => openDetail(ev.id));
+      host.appendChild(btn);
+    });
+    setBrandTitle(monthEvents.length);
+    clearResultCount();
+    if (empty) {
+      empty.classList.toggle("hidden", monthEvents.length > 0);
+      empty.textContent = state.events.length
+        ? "No posters this month."
+        : "No upcoming events.";
+    }
+  }
+
+  function ensureCalendar() {
+    const el = $("#calendar");
+    if (state.calendar || !el || typeof FullCalendar === "undefined") return;
+    let initial = new Date();
+    if (state.focusMonth) {
+      const [y, m] = state.focusMonth.split("-").map(Number);
+      if (y && m) initial = new Date(y, m - 1, 1);
+    }
+    state.calendar = new FullCalendar.Calendar(el, {
+      initialView: FC_VIEWS[state.calMode] || "dayGridMonth",
+      initialDate: initial,
+      headerToolbar: {
+        left: "prev,next today",
+        center: "title",
+        right: "",
+      },
+      buttonText: { today: "Today" },
+      firstDay: 1,
+      weekends: true,
+      height: "100%",
+      dayHeaderFormat: calDayHeaderFormat(),
+      dayMaxEvents: 0,
+      navLinks: false,
+      moreLinkClick: (info) => {
+        info.jsEvent.preventDefault();
+        selectAgendaDay(isoDate(info.date));
+      },
+      moreLinkContent: (arg) => ({ html: `<span class="fc-dot-count">${arg.num}</span>` }),
+      displayEventEnd: false,
+      forceEventDuration: false,
+      events: calendarEvents(),
+      dateClick: (info) => selectAgendaDay(info.dateStr),
+      eventClick: (info) => {
+        info.jsEvent.preventDefault();
+        openDetail(info.event.id);
+      },
+      datesSet: (info) => {
+        const key = monthKeyFromDate(info.view.currentStart);
+        if (!state._ignoreDatesSet) setFocusMonth(key, true);
+        const inMonth =
+          state.agendaDay && state.agendaDay.slice(0, 7) === key ? state.agendaDay : "";
+        if (!inMonth) {
+          const today = todayISO();
+          state.agendaDay = today.slice(0, 7) === key ? today : `${key}-01`;
+        }
+        requestAnimationFrame(() => {
+          if (state.calMode === "month") {
+            paintAgendaDay();
+            renderAgenda();
+          }
+        });
+      },
+    });
+    state.calendar.render();
+    applyCalMode(state.calMode, true);
+    const fcTitle = el.querySelector(".fc-toolbar-title");
+    if (fcTitle) {
+      fcTitle.style.cursor = "pointer";
+      fcTitle.addEventListener("click", openMonthPopup);
+    }
+    if (!state.agendaDay) {
+      const today = todayISO();
+      const key = state.focusMonth || monthKeyFromDate(new Date());
+      state.agendaDay = today.slice(0, 7) === key ? today : `${key}-01`;
+    }
+    paintAgendaDay();
+    renderAgenda();
+  }
+
+  function syncCalendar() {
+    if (!state.calendar) return;
+    applyCalendarOptions();
+    state.calendar.removeAllEvents();
+    calendarEvents().forEach((ev) => state.calendar.addEvent(ev));
+  }
+
+  function calDayHeaderFormat() {
+    return window.matchMedia("(max-width: 599px)").matches
+      ? { weekday: "narrow" }
+      : { weekday: "short" };
+  }
+
+  function applyCalendarOptions() {
+    if (!state.calendar) return;
+    state.calendar.setOption("firstDay", 1);
+    state.calendar.setOption("weekends", true);
+    state.calendar.setOption("dayMaxEvents", 0);
+    state.calendar.setOption("dayHeaderFormat", calDayHeaderFormat());
+  }
+
+  function ensureMap() {
+    if (state.map) return;
+    if (typeof L === "undefined") return;
+    const center = state.data?.center || { lat: 36.451456, lng: 28.2234119, zoom: 12 };
+    state.map = L.map("map", { scrollWheelZoom: true }).setView(
+      [center.lat, center.lng],
+      center.zoom || 12
+    );
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap",
+    }).addTo(state.map);
+    state.clusters = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 48,
+    });
+    state.map.addLayer(state.clusters);
+    renderMarkers();
+  }
+
+  function markerIcon(ev) {
+    const img = imageUrl(ev, true) || imageUrl(ev, false);
+    return L.divIcon({
+      className: "",
+      html: `<div class="leaflet-marker-photo" style="${
+        img ? `background-image:url('${escapeAttr(img)}')` : "background:#0f766e"
+      }"></div>`,
+      iconSize: [44, 44],
+      iconAnchor: [22, 22],
+    });
+  }
+
+  function renderMarkers() {
+    if (!state.map || !state.clusters) return;
+    state.clusters.clearLayers();
+    state.filtered
+      .filter((ev) => ev.lat != null && ev.lng != null)
+      .forEach((ev) => {
+        const marker = L.marker([Number(ev.lat), Number(ev.lng)], { icon: markerIcon(ev) });
+        marker.on("click", () => showMapSheet(ev));
+        state.clusters.addLayer(marker);
+      });
+  }
+
+  function fitMap() {
+    if (!state.map || !state.clusters || !state.clusters.getLayers().length) return;
+    state.map.fitBounds(state.clusters.getBounds().pad(0.2));
+  }
+
+  function showMapSheet(ev) {
+    const sheet = $("#map-sheet");
+    const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+    const maps = navigateUrl(ev);
+    sheet.classList.remove("hidden");
+    sheet.innerHTML = `
+      <button type="button" class="map-sheet-close" data-close-sheet aria-label="Close">\u00d7</button>
+      <div class="thumb" style="${thumb ? `background-image:url('${escapeAttr(thumb)}')` : ""}"></div>
+      <div>
+        <h3>${escapeHtml(ev.title || "")}</h3>
+        <p class="meta">${escapeHtml(fmtWhen(ev))}</p>
+        <p class="meta">${escapeHtml(ev.location || "")}</p>
+      </div>
+      <div class="sheet-actions">
+        <button type="button" class="btn primary" data-open>Details</button>
+        <div class="cal-menu-wrap">
+          <button type="button" class="btn primary" data-cal-btn aria-haspopup="true" aria-expanded="false">Calendar</button>
+          <div class="cal-menu hidden" data-cal-menu role="menu">
+            <a class="cal-menu-item" data-gcal href="${escapeAttr(googleCalUrl(ev))}" target="_blank" rel="noopener" role="menuitem">Google Calendar</a>
+            <button type="button" class="cal-menu-item" data-ics role="menuitem">Download .ics</button>
+          </div>
+        </div>
+        ${
+          maps
+            ? `<a class="btn secondary" href="${escapeAttr(maps)}" target="_blank" rel="noopener">Navigate</a>`
+            : ""
+        }
+        <button type="button" class="btn ghost" data-share-btn>Share</button>
+      </div>
+      <div class="share-row map-share-row hidden" data-share-row>
+        <button type="button" data-share="copy" class="btn ghost">Copy link</button>
+        <a data-share="whatsapp" class="btn ghost" target="_blank" rel="noopener">WhatsApp</a>
+        <a data-share="facebook" class="btn ghost" target="_blank" rel="noopener">Facebook</a>
+        <a data-share="x" class="btn ghost" target="_blank" rel="noopener">X</a>
+        <a data-share="mail" class="btn ghost">Mail</a>
+      </div>`;
+    sheet.querySelector("[data-close-sheet]").addEventListener("click", closeMapSheet);
+    sheet.querySelector("[data-open]").addEventListener("click", () => openDetail(ev.id));
+    bindCalMenu(sheet.querySelector("[data-cal-btn]"), sheet.querySelector("[data-cal-menu]"), () =>
+      downloadIcs(ev)
+    );
+    const shareRow = sheet.querySelector("[data-share-row]");
+    sheet.querySelector("[data-share-btn]").addEventListener("click", () => shareEvent(ev, shareRow));
+    shareRow.querySelector('[data-share="copy"]').addEventListener("click", async () => {
+      const url = eventShareUrl(ev);
+      const copyBtn = shareRow.querySelector('[data-share="copy"]');
+      try {
+        await navigator.clipboard.writeText(url);
+        copyBtn.textContent = "Copied";
+        setTimeout(() => {
+          copyBtn.textContent = "Copy link";
+        }, 1200);
+      } catch (_) {
+        prompt("Copy this link", url);
+      }
+    });
+  }
+
+  function closeMapSheet() {
+    const sheet = $("#map-sheet");
+    if (!sheet) return;
+    sheet.classList.add("hidden");
+    sheet.innerHTML = "";
+  }
+
+  function renderAll() {
+    renderList();
+    if (state.view === "rails") renderRails();
+    if (state.view === "posters") renderPosters();
+    if (state.calMode === "agenda" && state.view === "calendar") renderCalAgendaFull();
+    if (state.calendar) {
+      syncCalendar();
+      if (state.calMode === "month") {
+        paintAgendaDay();
+        renderAgenda();
+      }
+    }
+    if (state.map) {
+      renderMarkers();
+      if (state.view === "map") fitMap();
+    }
+    if (state.view === "calendar" || state.view === "map") {
+      setBrandTitle(state.filtered.length);
+      clearResultCount();
+    }
+  }
+
+  function findEvent(id) {
+    return state.events.find((ev) => ev.id === id);
+  }
+
+  function openLightbox(src, alt) {
+    if (!src) return;
+    const box = $("#lightbox");
+    const img = $("#lightbox-img");
+    img.src = src;
+    img.alt = alt || "";
+    box.classList.remove("hidden");
+  }
+
+  function closeLightbox() {
+    $("#lightbox").classList.add("hidden");
+    $("#lightbox-img").removeAttribute("src");
+  }
+
+  function openDetail(id) {
+    const ev = findEvent(id);
+    if (!ev) return;
+    state.selected = ev;
+    location.hash = `e=${encodeURIComponent(id)}`;
+    $("#detail").classList.remove("hidden");
+    const hero = $("#detail-hero");
+    const img = imageUrl(ev, false) || imageUrl(ev, true);
+    state.heroSrc = img;
+    hero.style.backgroundImage = img ? `url('${escapeAttr(img)}')` : "";
+    hero.disabled = !img;
+    $("#detail-title").textContent = ev.title || "Untitled";
+    const star = $("#detail-star");
+    star.dataset.star = String(ev.id || "");
+    star.textContent = isStarred(ev.id) ? "★" : "☆";
+    star.setAttribute("aria-pressed", isStarred(ev.id) ? "true" : "false");
+    star.setAttribute("aria-label", isStarred(ev.id) ? "Unstar event" : "Star event");
+    $("#detail-when").textContent = fmtWhen(ev);
+    const where = $("#detail-where");
+    where.textContent = ev.location || "";
+    const canMap = Boolean(ev.location && state.enabledViews.has("map"));
+    where.classList.toggle("location-link", canMap);
+    if (canMap) {
+      where.setAttribute("role", "link");
+      where.tabIndex = 0;
+      where.setAttribute("title", "Show on map");
+    } else {
+      where.removeAttribute("role");
+      where.removeAttribute("tabindex");
+      where.removeAttribute("title");
+    }
+    const artist = $("#detail-artist");
+    if (ev.artist) {
+      artist.textContent = ev.artist;
+      artist.classList.remove("hidden");
+    } else {
+      artist.classList.add("hidden");
+    }
+    const cats = $("#detail-cats");
+    cats.innerHTML = "";
+    (ev.category || []).forEach((c) => {
+      const span = document.createElement("button");
+      span.type = "button";
+      span.className = "chip active";
+      span.textContent = c;
+      span.disabled = true;
+      cats.appendChild(span);
+    });
+    $("#detail-notes").textContent = (ev.notes || "").trim();
+    $("#share-row").classList.add("hidden");
+    $("#btn-gcal").href = googleCalUrl(ev);
+    const hasCoords = ev.lat != null && ev.lng != null;
+    $("#detail-map-hint").classList.toggle("hidden", hasCoords || !ev.location);
+    const nav = $("#btn-navigate");
+    const maps = navigateUrl(ev);
+    if (maps) {
+      nav.href = maps;
+      nav.classList.remove("hidden");
+    } else {
+      nav.removeAttribute("href");
+      nav.classList.add("hidden");
+    }
+    renderMiniMap(ev);
+  }
+
+  function openLocationOnMap(ev) {
+    if (!ev || !ev.location || !state.enabledViews.has("map")) return;
+    closeDetail();
+    state.venues = new Set([ev.location]);
+    renderLocationFilter();
+    state._mapFocus = {
+      id: ev.id,
+      lat: ev.lat,
+      lng: ev.lng,
+    };
+    setView("map");
+  }
+
+  function closeDetail() {
+    $("#detail").classList.add("hidden");
+    if (state.miniMap) {
+      state.miniMap.remove();
+      state.miniMap = null;
+    }
+    if (location.hash.startsWith("#e=")) {
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+    state.selected = null;
+    state.heroSrc = "";
+  }
+
+  function renderMiniMap(ev) {
+    const host = $("#detail-mini-map");
+    if (state.miniMap) {
+      state.miniMap.remove();
+      state.miniMap = null;
+    }
+    if (ev.lat == null || ev.lng == null || typeof L === "undefined") {
+      host.classList.add("hidden");
+      return;
+    }
+    host.classList.remove("hidden");
+    host.innerHTML = "";
+    requestAnimationFrame(() => {
+      state.miniMap = L.map(host, {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+      }).setView([ev.lat, ev.lng], 15);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(
+        state.miniMap
+      );
+      L.marker([ev.lat, ev.lng], { icon: markerIcon(ev) }).addTo(state.miniMap);
+      const fix = () => {
+        if (!state.miniMap) return;
+        state.miniMap.invalidateSize();
+        state.miniMap.setView([ev.lat, ev.lng], 15);
+      };
+      requestAnimationFrame(fix);
+      setTimeout(fix, 120);
+    });
+  }
+
+  function icsDate(ev, end) {
+    const date = end ? ev.endDate || ev.date : ev.date;
+    const compact = (date || "").replace(/-/g, "");
+    if (!ev.time || end) {
+      if (end) {
+        const d = parseISO(ev.endDate || ev.date);
+        if (!d) return compact;
+        return isoDate(addDays(d, 1)).replace(/-/g, "");
+      }
+      return compact;
+    }
+    const [hh, mm] = ev.time.split(":");
+    return `${compact}T${hh}${mm}00`;
+  }
+
+  function icsBody(ev) {
+    const timed = Boolean(ev.time);
+    const stamp = new Date()
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace(/\.\d{3}/, "");
+    const uid = `${ev.id || "event"}@event-manager`;
+    const summary = escapeIcs(ev.title || "Event");
+    const desc = escapeIcs((ev.notes || "").replace(/\r?\n/g, "\\n"));
+    const loc = escapeIcs(ev.location || "");
+    const url = ev.url ? `URL:${ev.url}\r\n` : "";
+    if (timed) {
+      return [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Event Manager//EN",
+        "CALSCALE:GREGORIAN",
+        "BEGIN:VEVENT",
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART:${icsDate(ev, false)}`,
+        `DTEND:${icsDate({ ...ev, time: bumpHour(ev.time) }, false)}`,
+        `SUMMARY:${summary}`,
+        `DESCRIPTION:${desc}`,
+        `LOCATION:${loc}`,
+        url.trim(),
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ]
+        .filter(Boolean)
+        .join("\r\n");
+    }
+    return [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Event Manager//EN",
+      "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT",
+      `UID:${uid}`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${icsDate(ev, false)}`,
+      `DTEND;VALUE=DATE:${icsDate(ev, true)}`,
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${desc}`,
+      `LOCATION:${loc}`,
+      url.trim(),
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ]
+      .filter(Boolean)
+      .join("\r\n");
+  }
+
+  function bumpHour(time) {
+    const [hh, mm] = (time || "00:00").split(":").map(Number);
+    const d = new Date(2000, 0, 1, hh || 0, mm || 0);
+    d.setHours(d.getHours() + 2);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
+  function downloadIcs(ev) {
+    const blob = new Blob([icsBody(ev)], { type: "text/calendar;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(ev.title || "event").replace(/[^\w\-]+/g, "_").slice(0, 40)}.ics`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function googleCalUrl(ev) {
+    const text = encodeURIComponent(ev.title || "Event");
+    const details = encodeURIComponent(ev.notes || "");
+    const location = encodeURIComponent(ev.location || "");
+    let dates;
+    if (ev.time) {
+      dates = `${icsDate(ev, false)}/${icsDate({ ...ev, time: bumpHour(ev.time) }, false)}`;
+    } else {
+      dates = `${icsDate(ev, false)}/${icsDate(ev, true)}`;
+    }
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`;
+  }
+
+  function eventShareUrl(ev) {
+    const base = `${location.origin}${location.pathname}${location.search}`;
+    return `${base}#e=${encodeURIComponent(ev.id)}`;
+  }
+
+  async function shareEvent(ev, shareHost) {
+    const url = eventShareUrl(ev);
+    const title = ev.title || "Event";
+    const text = `${title}\n${fmtWhen(ev)}${ev.location ? `\n${ev.location}` : ""}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+        return;
+      } catch (_) {
+        /* unavailable or cancelled — show fallback */
+      }
+    }
+    const row = shareHost || $("#share-row");
+    if (!row) return;
+    row.classList.remove("hidden");
+    row.querySelector('[data-share="whatsapp"]').href =
+      `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`;
+    row.querySelector('[data-share="facebook"]').href =
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    row.querySelector('[data-share="x"]').href =
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
+    const mail = row.querySelector('[data-share="mail"]');
+    if (mail) {
+      mail.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${text}\n${url}`)}`;
+    }
+  }
+
+  function closeCalMenus(except) {
+    $$(".cal-menu").forEach((menu) => {
+      if (menu === except) return;
+      menu.classList.add("hidden");
+      const wrap = menu.closest(".cal-menu-wrap");
+      const btn = wrap && wrap.querySelector("[aria-haspopup]");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function bindCalMenu(btn, menu, onIcs) {
+    if (!btn || !menu) return;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = menu.classList.contains("hidden");
+      closeCalMenus(open ? menu : null);
+      menu.classList.toggle("hidden", !open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    const ics = menu.querySelector("[data-ics], #btn-ics");
+    if (ics && onIcs) {
+      ics.addEventListener("click", () => {
+        onIcs();
+        closeCalMenus();
+      });
+    }
+    menu.querySelectorAll("a.cal-menu-item").forEach((a) =>
+      a.addEventListener("click", () => closeCalMenus())
+    );
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function escapeAttr(value) {
+    return String(value || "").replace(/'/g, "%27").replace(/"/g, "&quot;");
+  }
+
+  function escapeIcs(value) {
+    return String(value || "")
+      .replace(/\\/g, "\\\\")
+      .replace(/;/g, "\\;")
+      .replace(/,/g, "\\,");
+  }
+
+  function shiftMonth(delta) {
+    const keys = availableMonthKeys();
+    const cur = state.focusMonth || "";
+    const next =
+      delta < 0 ? [...keys].reverse().find((k) => k < cur) : keys.find((k) => k > cur);
+    if (!next) return;
+    setFocusMonth(next);
+  }
+
+  function printEventsForMonth(key) {
+    return state.filtered.filter((ev) => overlapsMonth(ev, key)).sort(sortSoonest);
+  }
+
+  function printFocusDate() {
+    if (state.calendar) {
+      try {
+        return state.calendar.getDate();
+      } catch (_) {}
+    }
+    if (state.agendaDay) {
+      const d = parseISO(state.agendaDay);
+      if (d) return d;
+    }
+    return new Date();
+  }
+
+  function printWeekStart(d) {
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const day = x.getDay();
+    const offset = day === 0 ? 6 : day - 1;
+    x.setDate(x.getDate() - offset);
+    return x;
+  }
+
+  function printChipHtml(ev) {
+    const time = ev.time || "All day";
+    return `<div class="print-chip"><span class="print-chip-time">${escapeHtml(time)}</span> ${escapeHtml(
+      ev.title || "Untitled"
+    )}</div>`;
+  }
+
+  function buildPrintMonthHtml() {
+    const focus = printFocusDate();
+    const y = focus.getFullYear();
+    const m = focus.getMonth();
+    const key = `${y}-${String(m + 1).padStart(2, "0")}`;
+    const events = printEventsForMonth(key);
+    const first = new Date(y, m, 1);
+    const startPad = (first.getDay() - 1 + 7) % 7;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const dow = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(2000, 0, 3 + i);
+      dow.push(d.toLocaleDateString(undefined, { weekday: "short" }));
+    }
+    let cells = "";
+    for (let i = 0; i < startPad; i++) cells += '<div class="print-cal-cell empty"></div>';
+    for (let day = 1; day <= daysInMonth; day++) {
+      const iso = `${key}-${String(day).padStart(2, "0")}`;
+      const dayEvents = events.filter((ev) => eventStart(ev) <= iso && eventEnd(ev) >= iso);
+      cells += `<div class="print-cal-cell"><div class="print-cal-daynum">${day}</div>${dayEvents
+        .map(printChipHtml)
+        .join("")}</div>`;
+    }
+    const title = focus.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    return `<h1>Month — ${escapeHtml(title)}</h1>
+      <div class="print-cal-dows">${dow.map((d) => `<div>${escapeHtml(d)}</div>`).join("")}</div>
+      <div class="print-cal-grid">${cells}</div>`;
+  }
+
+  function buildPrintWeekHtml() {
+    const start = printWeekStart(printFocusDate());
+    const end = addDays(start, 6);
+    const title = `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${end.toLocaleDateString(
+      undefined,
+      { month: "short", day: "numeric", year: "numeric" }
+    )}`;
+    let cols = "";
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(start, i);
+      const iso = isoDate(d);
+      const items = eventsOnDay(iso);
+      cols += `<div class="print-week-col"><div class="print-week-head">${escapeHtml(
+        d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" })
+      )}</div>${items.map(printChipHtml).join("") || '<p class="print-empty">—</p>'}</div>`;
+    }
+    return `<h1>Week — ${escapeHtml(title)}</h1><div class="print-week-grid">${cols}</div>`;
+  }
+
+  function buildPrintDayHtml() {
+    const d = printFocusDate();
+    const iso = isoDate(d);
+    const items = eventsOnDay(iso);
+    const title = d.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    const cards = items
+      .map((ev) => {
+        const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+        const notes = (ev.notes || "").trim().slice(0, 280);
+        return `<article class="print-day-card">${
+          thumb ? `<img src="${escapeAttr(thumb)}" alt="" />` : ""
+        }<div><h3>${escapeHtml(ev.title || "Untitled")}</h3><p class="meta">${escapeHtml(fmtWhen(ev))}${
+          ev.location ? ` · ${escapeHtml(ev.location)}` : ""
+        }</p>${notes ? `<p class="notes">${escapeHtml(notes)}</p>` : ""}</div></article>`;
+      })
+      .join("");
+    return `<h1>Day — ${escapeHtml(title)}</h1>${cards || '<p class="print-empty">No events this day.</p>'}`;
+  }
+
+  function buildPrintAgendaHtml() {
+    const grouped = new Map();
+    state.filtered.forEach((ev) => {
+      const start = eventStart(ev);
+      if (!start) return;
+      if (!grouped.has(start)) grouped.set(start, []);
+      grouped.get(start).push(ev);
+    });
+    const days = [...grouped.keys()].sort();
+    if (!days.length) return `<h1>Agenda</h1><p class="print-empty">No upcoming events.</p>`;
+    let html = "<h1>Agenda</h1>";
+    days.forEach((day) => {
+      const d = parseISO(day);
+      html += `<h2 class="print-agenda-day">${escapeHtml(
+        d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+      )}</h2>`;
+      grouped
+        .get(day)
+        .slice()
+        .sort(sortSoonest)
+        .forEach((ev) => {
+          const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+          html += `<div class="print-agenda-row">${
+            thumb ? `<img src="${escapeAttr(thumb)}" alt="" />` : ""
+          }<div><strong>${escapeHtml(ev.title || "Untitled")}</strong><span class="meta">${escapeHtml(
+            ev.time || "All day"
+          )}${ev.location ? ` · ${escapeHtml(ev.location)}` : ""}</span></div></div>`;
+        });
+    });
+    return html;
+  }
+
+  function buildPrintTableHtml() {
+    ensureFocusMonth();
+    const events =
+      state.view === "starred"
+        ? state.filtered.slice().sort(sortSoonest)
+        : printEventsForMonth(state.focusMonth || monthKeyFromDate(new Date()));
+    const title = (state.data && state.data.title) || "Events";
+    let rows = events
+      .map((ev) => {
+        const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+        return `<tr>
+          <td class="print-thumb">${thumb ? `<img src="${escapeAttr(thumb)}" alt="" />` : ""}</td>
+          <td>${escapeHtml(ev.date || "")}</td>
+          <td>${escapeHtml(ev.endDate || "")}</td>
+          <td>${escapeHtml(ev.time || "")}</td>
+          <td>${escapeHtml(ev.title || "")}</td>
+          <td>${escapeHtml(ev.location || "")}</td>
+        </tr>`;
+      })
+      .join("");
+    if (!rows) rows = `<tr><td colspan="6">No events.</td></tr>`;
+    return `<h1>${escapeHtml(title)} (${events.length})</h1>
+      <table class="print-table">
+        <thead><tr><th></th><th>Start</th><th>End</th><th>Time</th><th>Title</th><th>Location</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function prepareCalendarPrint() {
+    const host = $("#print-cal");
+    if (!host) return;
+    const mode = state.calMode || "month";
+    let html = "";
+    if (mode === "week") html = buildPrintWeekHtml();
+    else if (mode === "day") html = buildPrintDayHtml();
+    else if (mode === "agenda") html = buildPrintAgendaHtml();
+    else html = buildPrintMonthHtml();
+    host.innerHTML = html;
+  }
+
+  function printPage() {
+    if (state.view === "rails" || !state.printEnabled) return;
+    const host = $("#print-cal");
+    if (state.view === "calendar") {
+      prepareCalendarPrint();
+      document.body.classList.add("printing-cal");
+    } else if (state.view === "table") {
+      if (host) host.innerHTML = buildPrintTableHtml();
+      document.body.classList.add("printing-cal");
+    } else if (host) {
+      host.innerHTML = "";
+    }
+    window.print();
+  }
+
+  window.addEventListener("afterprint", () => {
+    document.body.classList.remove("printing-cal");
+    const host = $("#print-cal");
+    if (host) host.innerHTML = "";
+  });
+
+  /* ===== Month jump popup ===== */
+  function openMonthPopup() {
+    const popup = $("#month-popup");
+    popup.classList.remove("hidden");
+    renderMonthPopup();
+    addBackdrop(popup, closeMonthPopup);
+  }
+
+  function closeMonthPopup() {
+    $("#month-popup").classList.add("hidden");
+    removeBackdrop();
+  }
+
+  function renderMonthPopup() {
+    const popup = $("#month-popup");
+    const cur = state.focusMonth || monthKeyFromDate(new Date());
+    const [selY, selM] = cur.split("-").map(Number);
+    const allKeys = new Set(state.events.map(monthKey).filter(Boolean));
+    const yearSet = new Set([...allKeys].map((k) => Number(k.split("-")[0])));
+    yearSet.add(new Date().getFullYear());
+    const years = [...yearSet].sort();
+
+    let html = '<div class="month-popup-head"><span>Jump to month</span>';
+    html += '<button type="button" class="month-popup-close" aria-label="Close">\u00d7</button></div>';
+    html += '<div class="month-popup-grid"><div class="month-popup-years">';
+    years.forEach((y) => {
+      const hasEvents = [...allKeys].some((k) => k.startsWith(`${y}-`));
+      const cls = (y === selY ? "active" : "") + (hasEvents ? "" : " muted");
+      html += `<button type="button" data-y="${y}" class="${cls.trim()}">${y}</button>`;
+    });
+    html += '</div><div class="month-popup-months">';
+    const mNames = Array.from({ length: 12 }, (_, i) =>
+      new Date(2000, i, 1).toLocaleDateString(undefined, { month: "short" })
+    );
+    mNames.forEach((name, i) => {
+      const m = i + 1;
+      const key = `${selY}-${String(m).padStart(2, "0")}`;
+      const hasEvents = allKeys.has(key);
+      const active = m === selM ? " active" : "";
+      const muted = hasEvents ? "" : " muted";
+      const dis = hasEvents ? "" : " disabled";
+      html += `<button type="button" data-m="${m}" class="${(active + muted).trim()}"${dis}>${name}</button>`;
+    });
+    html += "</div></div>";
+    popup.innerHTML = html;
+
+    popup.querySelector(".month-popup-close").addEventListener("click", closeMonthPopup);
+
+    let pickY = selY;
+    const updateMonths = () => {
+      popup.querySelectorAll(".month-popup-months button").forEach((btn) => {
+        const m = Number(btn.dataset.m);
+        const k = `${pickY}-${String(m).padStart(2, "0")}`;
+        const has = allKeys.has(k);
+        btn.classList.toggle("muted", !has);
+        btn.disabled = !has;
+        btn.classList.toggle("active", m === selM && pickY === selY);
+      });
+    };
+    popup.querySelectorAll(".month-popup-years button").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        pickY = Number(btn.dataset.y);
+        popup.querySelectorAll(".month-popup-years button").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        updateMonths();
+      })
+    );
+    popup.querySelectorAll(".month-popup-months button").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return;
+        const m = Number(btn.dataset.m);
+        const key = `${pickY}-${String(m).padStart(2, "0")}`;
+        setFocusMonth(key);
+        closeMonthPopup();
+      })
+    );
+  }
+
+  /* ===== Range picker popup ===== */
+  let rangeState = { picking: null, from: "", to: "", monthL: null };
+
+  function openRangePopup() {
+    const popup = $("#range-popup");
+    popup.classList.remove("hidden");
+    rangeState.from = state.dateFrom;
+    rangeState.to = state.dateTo;
+    rangeState.picking = "from";
+    const seed =
+      (state.focusMonth && /^\d{4}-\d{2}$/.test(state.focusMonth) && state.focusMonth) ||
+      (rangeState.from && rangeState.from.slice(0, 7)) ||
+      monthKeyFromDate(new Date());
+    const [y, m] = seed.split("-").map(Number);
+    rangeState.monthL = new Date(y, m - 1, 1);
+    renderRangePopup();
+    addBackdrop(popup, closeRangePopup);
+  }
+
+  function closeRangePopup() {
+    $("#range-popup").classList.add("hidden");
+    removeBackdrop();
+    syncFiltersDdBtn();
+  }
+
+  function applyRange(from, to) {
+    state.dateFrom = from || "";
+    state.dateTo = to || "";
+    $("#date-from").value = state.dateFrom;
+    $("#date-to").value = state.dateTo;
+    updateRangeBtn();
+    if (from && /^\d{4}-\d{2}/.test(from)) {
+      state.focusMonth = from.slice(0, 7);
+    }
+    applyFilters();
+    closeRangePopup();
+  }
+
+  function renderRangePopup() {
+    const popup = $("#range-popup");
+    const today = todayISO();
+    const now = new Date();
+    const dayOfWeek = now.getDay() || 7; // Mon=1 … Sun=7
+    const weekStart = addDays(now, 1 - dayOfWeek);
+    const weekEnd = addDays(weekStart, 6);
+    const y = now.getFullYear();
+    const m = now.getMonth();
+
+    let html = '<div class="range-presets">';
+    html += `<button type="button" data-preset="today">From today</button>`;
+    html += `<button type="button" data-preset="week">This week</button>`;
+    html += `<button type="button" data-preset="month">This month</button>`;
+    html += `<button type="button" data-preset="next">Next month</button>`;
+    html += "</div>";
+    html += '<div class="range-cals">';
+    html += renderRangeMonth(rangeState.monthL);
+    const monthR = new Date(rangeState.monthL.getFullYear(), rangeState.monthL.getMonth() + 1, 1);
+    html += renderRangeMonth(monthR);
+    html += "</div>";
+    html += '<div class="range-popup-actions">';
+    html += '<button type="button" class="btn ghost" data-cancel>Cancel</button>';
+    html += '<button type="button" class="btn primary" data-ok>OK</button>';
+    html += "</div>";
+    popup.innerHTML = html;
+
+    popup.querySelector("[data-cancel]").addEventListener("click", closeRangePopup);
+    popup.querySelector("[data-ok]").addEventListener("click", () => {
+      applyRange(rangeState.from || "", rangeState.to || "");
+    });
+
+    popup.querySelectorAll("[data-preset]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const p = btn.dataset.preset;
+        if (p === "today") applyRange(today, "");
+        else if (p === "week") applyRange(isoDate(weekStart), isoDate(weekEnd));
+        else if (p === "month") {
+          applyRange(isoDate(new Date(y, m, 1)), isoDate(new Date(y, m + 1, 0)));
+        } else if (p === "next") {
+          applyRange(isoDate(new Date(y, m + 1, 1)), isoDate(new Date(y, m + 2, 0)));
+        }
+      })
+    );
+
+    popup.querySelectorAll(".range-cal-head button").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const d = Number(btn.dataset.dir);
+        rangeState.monthL = new Date(
+          rangeState.monthL.getFullYear(),
+          rangeState.monthL.getMonth() + d,
+          1
+        );
+        renderRangePopup();
+      })
+    );
+
+    popup.querySelectorAll(".range-cal-grid .day:not(.other)").forEach((el) =>
+      el.addEventListener("click", () => {
+        const iso = el.dataset.date;
+        if (rangeState.picking === "from") {
+          rangeState.from = iso;
+          rangeState.to = "";
+          rangeState.picking = "to";
+          renderRangePopup();
+        } else {
+          if (iso < rangeState.from) {
+            rangeState.to = rangeState.from;
+            rangeState.from = iso;
+          } else {
+            rangeState.to = iso;
+          }
+          rangeState.picking = "from";
+          renderRangePopup();
+        }
+      })
+    );
+  }
+
+  function renderRangeMonth(d) {
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const label = d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    let html = '<div class="range-cal">';
+    html += '<div class="range-cal-head">';
+    html += `<button data-dir="-1" aria-label="Previous">‹</button>`;
+    html += `<span>${escapeHtml(label)}</span>`;
+    html += `<button data-dir="1" aria-label="Next">›</button>`;
+    html += "</div>";
+    html += '<div class="range-cal-grid">';
+    const dow = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+    dow.forEach((n) => { html += `<span class="dow">${n}</span>`; });
+    const first = new Date(y, m, 1);
+    let startDay = first.getDay() || 7;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    for (let i = 1; i < startDay; i++) html += '<span class="day other"></span>';
+    for (let day = 1; day <= daysInMonth; day++) {
+      const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      let cls = "day";
+      if (rangeState.from && iso === rangeState.from) cls += " range-start";
+      if (rangeState.to && iso === rangeState.to) cls += " range-end";
+      if (rangeState.from && rangeState.to && iso > rangeState.from && iso < rangeState.to) cls += " in-range";
+      html += `<span class="${cls}" data-date="${iso}">${day}</span>`;
+    }
+    html += "</div></div>";
+    return html;
+  }
+
+  /* ===== Backdrop helper ===== */
+  let _backdrop = null;
+  function addBackdrop(popup, closeFn) {
+    removeBackdrop();
+    _backdrop = document.createElement("div");
+    _backdrop.className = "popup-backdrop";
+    _backdrop.addEventListener("click", closeFn);
+    document.body.appendChild(_backdrop);
+  }
+  function removeBackdrop() {
+    if (_backdrop) {
+      _backdrop.remove();
+      _backdrop = null;
+    }
+  }
+
+  /* ===== Settings popup ===== */
+  function openSettingsPopup() {
+    const popup = $("#settings-popup");
+    popup.classList.remove("hidden");
+    renderSettingsPopup();
+    addBackdrop(popup, closeSettingsPopup);
+  }
+
+  function closeSettingsPopup() {
+    $("#settings-popup").classList.add("hidden");
+    removeBackdrop();
+  }
+
+  function renderSettingsPopup() {
+    const popup = $("#settings-popup");
+    let html = '<div class="settings-popup-head"><span>Settings</span>';
+    html += '<button type="button" class="month-popup-close" aria-label="Close">\u00d7</button></div>';
+    html += '<div class="settings-row"><label>Columns</label><div class="settings-choices">';
+    [1, 2, 3].forEach((n) => {
+      const active = state.cardsPerRow === n ? " active" : "";
+      html += `<button type="button" data-cols="${n}" class="${active.trim()}">${n}</button>`;
+    });
+    html += "</div></div>";
+    html += '<div class="settings-row"><label>Small screen</label><div class="settings-choices">';
+    [
+      [true, "Group"],
+      [false, "Rail"],
+    ].forEach(([grouped, label]) => {
+      const active = state.groupToolbar === grouped ? " active" : "";
+      html += `<button type="button" data-group-toolbar="${grouped}" class="${active.trim()}">${label}</button>`;
+    });
+    html += "</div></div>";
+    html += '<p class="settings-hint muted">Group = Views/Filters menus. Rail = scrollable bars.</p>';
+    html += '<div class="settings-row"><label>Language</label><div class="settings-choices">';
+    [
+      ["en", "icons/flag-gb.svg", "English"],
+      ["el", "icons/flag-gr.svg", "Ελληνικά"],
+    ].forEach(([code, src, label]) => {
+      const active = state.lang === code ? " active" : "";
+      html += `<button type="button" data-lang="${code}" class="lang-choice${active}" title="${label}" aria-label="${label}"><img class="lang-flag" src="${src}" alt="" width="20" height="15" decoding="async" /></button>`;
+    });
+    html += "</div></div>";
+    if (state.deferredInstall) {
+      html += '<div class="settings-row"><button type="button" class="btn primary" data-install>Install app</button></div>';
+    } else if (isIos() && !isStandalone()) {
+      html +=
+        '<p class="settings-hint muted">Install: Share → Add to Home Screen</p>';
+    }
+    popup.innerHTML = html;
+    popup.querySelector(".month-popup-close").addEventListener("click", closeSettingsPopup);
+    popup.querySelectorAll("[data-cols]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        state.cardsPerRow = Number(btn.dataset.cols);
+        applyCardsPerRow();
+        saveSettings();
+        popup.querySelectorAll("[data-cols]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      })
+    );
+    popup.querySelectorAll("[data-group-toolbar]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        state.groupToolbar = btn.dataset.groupToolbar === "true";
+        applyToolbarLayout();
+        saveSettings();
+        popup.querySelectorAll("[data-group-toolbar]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      })
+    );
+    popup.querySelectorAll("[data-lang]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        setLang(btn.dataset.lang);
+        popup.querySelectorAll("[data-lang]").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      })
+    );
+    const installBtn = popup.querySelector("[data-install]");
+    if (installBtn) {
+      installBtn.addEventListener("click", async () => {
+        await promptInstall();
+        renderSettingsPopup();
+      });
+    }
+  }
+
+  function isIos() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
+  function isStandalone() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      navigator.standalone === true
+    );
+  }
+
+  async function promptInstall() {
+    const ev = state.deferredInstall;
+    if (!ev) return;
+    state.deferredInstall = null;
+    ev.prompt();
+    try {
+      await ev.userChoice;
+    } catch (_) {}
+    updateInstallUi();
+  }
+
+  function updateInstallUi() {
+    const topBtn = $("#btn-install");
+    if (topBtn) {
+      topBtn.classList.toggle("hidden", !state.deferredInstall);
+    }
+    if (!$("#settings-popup").classList.contains("hidden")) renderSettingsPopup();
+  }
+
+  function registerPwa() {
+    if (!("serviceWorker" in navigator)) return;
+    const secure =
+      location.protocol === "https:" ||
+      location.hostname === "localhost" ||
+      location.hostname === "127.0.0.1";
+    if (!secure) return;
+    navigator.serviceWorker.register("service-worker.js", { scope: "./" }).catch(() => {});
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      state.deferredInstall = e;
+      updateInstallUi();
+    });
+    window.addEventListener("appinstalled", () => {
+      state.deferredInstall = null;
+      updateInstallUi();
+    });
+  }
+
+  function bindUi() {
+    $$(".top .views > .view-btn").forEach((btn) =>
+      btn.addEventListener("click", () => setView(btn.dataset.view))
+    );
+    $("#views-dd-btn").addEventListener("click", toggleViewsDropdown);
+    $$("#views-dd-menu [data-view]").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setView(btn.dataset.view);
+      })
+    );
+    $("#filters-dd-btn").addEventListener("click", toggleFiltersPanel);
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#views-dd")) closeViewsDropdown();
+      if (
+        useGroupedToolbar() &&
+        $("#filters-wrap")?.classList.contains("is-open") &&
+        !e.target.closest("#filters-wrap") &&
+        !e.target.closest("#filters-dd-btn") &&
+        !e.target.closest(".filter-popup") &&
+        !e.target.closest("#range-popup") &&
+        !e.target.closest(".popup-backdrop")
+      ) {
+        closeFiltersPanel();
+      }
+    });
+    $("#btn-print").addEventListener("click", printPage);
+    $("#btn-settings").addEventListener("click", (e) => {
+      e.stopPropagation();
+      openSettingsPopup();
+    });
+    $$(".lang-btn").forEach((btn) =>
+      btn.addEventListener("click", () => setLang(btn.dataset.lang))
+    );
+    $("#btn-about").addEventListener("click", () => $("#about").classList.remove("hidden"));
+    $("#detail-star").addEventListener("click", (e) => {
+      if (state.selected) toggleStar(state.selected.id, e);
+    });
+    $("#detail-where").addEventListener("click", () => {
+      if (state.selected) openLocationOnMap(state.selected);
+    });
+    $("#detail-where").addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && state.selected) {
+        e.preventDefault();
+        openLocationOnMap(state.selected);
+      }
+    });
+    $$("[data-about-close]").forEach((el) =>
+      el.addEventListener("click", () => $("#about").classList.add("hidden"))
+    );
+    $("#month-prev").addEventListener("click", () => shiftMonth(-1));
+    $("#month-next").addEventListener("click", () => shiftMonth(1));
+    $("#month-title").addEventListener("click", openMonthPopup);
+    $$(".cal-mode-btn").forEach((btn) =>
+      btn.addEventListener("click", () => applyCalMode(btn.dataset.calMode))
+    );
+    $$(".rails-mode-btn").forEach((btn) =>
+      btn.addEventListener("click", () => applyRailsLayout(btn.dataset.railsLayout))
+    );
+    const railsScroll = $("#rails-scroll");
+    if (railsScroll) {
+      railsScroll.addEventListener("scroll", onRailsScroll, { passive: true });
+    }
+    $("#stars-clear").addEventListener("click", clearAllStars);
+    $("#range-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      openRangePopup();
+    });
+    $("#range-today").addEventListener("click", () => applyRange(todayISO(), ""));
+    $("#search").addEventListener("input", (e) => {
+      state.search = (e.target.value || "").trim().toLowerCase();
+      applyFilters();
+    });
+    $("#date-from").addEventListener("change", (e) => {
+      state.dateFrom = e.target.value || "";
+      updateRangeBtn();
+      applyFilters();
+    });
+    $("#date-to").addEventListener("change", (e) => {
+      state.dateTo = e.target.value || "";
+      updateRangeBtn();
+      applyFilters();
+    });
+    $("#loc-all").addEventListener("click", clearLocationFilter);
+    $("#cat-all").addEventListener("click", clearCategoryFilter);
+    $("#hide-allday").addEventListener("change", (e) => {
+      state.hideAllDay = e.target.checked;
+      syncFiltersDdBtn();
+      applyFilters();
+    });
+    $("#hide-multiday").addEventListener("change", (e) => {
+      state.hideMultiDay = e.target.checked;
+      syncFiltersDdBtn();
+      applyFilters();
+    });
+    $("#cat-picker-btn").addEventListener("click", (e) =>
+      toggleFilterPopup("#cat-popup", "#cat-picker-btn", e)
+    );
+    $("#loc-picker-btn").addEventListener("click", (e) =>
+      toggleFilterPopup("#loc-popup", "#loc-picker-btn", e)
+    );
+    $("#cat-done").addEventListener("click", closeFilterPopups);
+    $("#loc-done").addEventListener("click", closeFilterPopups);
+    $("#cat-clear").addEventListener("click", clearCategoryFilter);
+    $("#loc-clear").addEventListener("click", clearLocationFilter);
+    $$(".filter-popup").forEach((popup) =>
+      popup.addEventListener("click", (e) => e.stopPropagation())
+    );
+    $("#filters-wrap").addEventListener("click", (e) => e.stopPropagation());
+    bindHScroll($(".views-wrap"));
+    bindHScroll($(".filters-wrap"));
+    /* filters rail uses thin scrollbar; grouped mode uses sheet */
+    $("#detail-hero").addEventListener("click", () => {
+      if (state.heroSrc) openLightbox(state.heroSrc, state.selected?.title || "");
+    });
+    $$("[data-lightbox-close]").forEach((el) => el.addEventListener("click", closeLightbox));
+    $("#lightbox").addEventListener("click", (e) => {
+      if (e.target.id === "lightbox") closeLightbox();
+    });
+    $$("[data-close]").forEach((el) => el.addEventListener("click", closeDetail));
+    bindCalMenu($("#btn-cal"), $("#cal-menu"), () => state.selected && downloadIcs(state.selected));
+    $("#btn-share").addEventListener("click", () => state.selected && shareEvent(state.selected));
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".cal-menu-wrap")) closeCalMenus();
+    });
+    const installTop = $("#btn-install");
+    if (installTop) installTop.addEventListener("click", () => promptInstall());
+    $('[data-share="copy"]').addEventListener("click", async () => {
+      if (!state.selected) return;
+      const url = eventShareUrl(state.selected);
+      try {
+        await navigator.clipboard.writeText(url);
+        $('[data-share="copy"]').textContent = "Copied";
+        setTimeout(() => {
+          $('[data-share="copy"]').textContent = "Copy link";
+        }, 1200);
+      } catch (_) {
+        prompt("Copy this link", url);
+      }
+    });
+    const scrollTopBtn = $("#scroll-top");
+    let scrollIdle;
+    const onScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop;
+      scrollTopBtn.classList.toggle("visible", y > 240);
+      scrollTopBtn.classList.add("moving");
+      clearTimeout(scrollIdle);
+      scrollIdle = setTimeout(() => scrollTopBtn.classList.remove("moving"), 700);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    scrollTopBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+    window.addEventListener("hashchange", readHash);
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if ([...$$(".cal-menu")].some((m) => !m.classList.contains("hidden"))) closeCalMenus();
+        else if (!$("#views-dd-menu").classList.contains("hidden")) closeViewsDropdown();
+        else if (![...$$(".filter-popup")].every((p) => p.classList.contains("hidden"))) closeFilterPopups();
+        else if ($("#filters-wrap")?.classList.contains("is-open")) closeFiltersPanel();
+        else if (!$("#settings-popup").classList.contains("hidden")) closeSettingsPopup();
+        else if (!$("#month-popup").classList.contains("hidden")) closeMonthPopup();
+        else if (!$("#range-popup").classList.contains("hidden")) closeRangePopup();
+        else if (!$("#lightbox").classList.contains("hidden")) closeLightbox();
+        else if (!$("#about").classList.contains("hidden")) $("#about").classList.add("hidden");
+        else if (!$("#detail").classList.contains("hidden")) closeDetail();
+        else if (!$("#map-sheet").classList.contains("hidden")) closeMapSheet();
+      }
+    });
+    window.addEventListener("resize", () => {
+      applyToolbarLayout();
+      refreshHScrollFades();
+      if (state.calendar && state.view === "calendar") {
+        applyCalendarOptions();
+        state.calendar.updateSize();
+      }
+    });
+  }
+
+  function readHash() {
+    const m = location.hash.match(/^#e=(.+)$/);
+    if (m) openDetail(decodeURIComponent(m[1]));
+  }
+
+  async function boot() {
+    state.enabledViews = parseEnabledViews();
+    state.printEnabled = parsePrintEnabled();
+    loadSettings();
+    ensureRailsHorizon();
+    const today = todayISO();
+    if (!state.dateFrom || state.dateFrom < today) state.dateFrom = today;
+    if (!state.enabledViews.has(state.view)) state.view = firstEnabledView();
+    applyViewConfig();
+    applyToolbarLayout();
+    bindUi();
+    registerPwa();
+    applySettingsToForm();
+    try {
+      const res = await fetch("data/public.json", { cache: "no-store" });
+      state.data = await res.json();
+    } catch (_) {
+      state.data = {
+        title: "Events",
+        events: [],
+        center: { lat: 36.451456, lng: 28.2234119, zoom: 12 },
+      };
+    }
+    document.title = state.data.title || "Events";
+    setBrandTitle();
+    state.rawEvents = (Array.isArray(state.data.events) ? state.data.events : []).slice();
+    rebuildEventsFromLang();
+    syncLangButtons();
+    renderCategoryPicker();
+    renderLocationFilter();
+    setView(state.view || firstEnabledView());
+    readHash();
+  }
+
+  boot();
+})();
