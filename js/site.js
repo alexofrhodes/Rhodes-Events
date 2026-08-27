@@ -5,7 +5,8 @@
   const ALL_VIEWS = ["cards", "rails", "table", "posters", "calendar", "map", "starred"];
   const CAL_MODES = ["month", "week", "day", "agenda"];
   const RAILS_LAYOUTS = ["days", "cards"];
-  const FC_VIEWS = { month: "dayGridMonth", week: "timeGridWeek", day: "timeGridDay" };
+  const THEMES = ["light", "dark", "system"];
+  const THEME_LABELS = { light: "Light", dark: "Dark", system: "System" };
 
   const state = {
     data: null,
@@ -30,6 +31,7 @@
     cardsPerRow: 3,
     groupToolbar: true,
     lang: "en",
+    theme: "system",
     rawEvents: [],
     enabledViews: new Set(ALL_VIEWS),
     printEnabled: true,
@@ -108,11 +110,59 @@
     if (btn) btn.setAttribute("aria-expanded", "false");
   }
 
+  function closeLangDropdown() {
+    const menu = $("#lang-dd-menu");
+    const btn = $("#lang-dd-btn");
+    if (menu) menu.classList.add("hidden");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+
+  function closeThemeDropdown() {
+    const menu = $("#theme-dd-menu");
+    const btn = $("#theme-dd-btn");
+    if (menu) menu.classList.add("hidden");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+
+  function closeActionDropdowns() {
+    closeViewsDropdown();
+    closeLangDropdown();
+    closeThemeDropdown();
+  }
+
   function toggleViewsDropdown(e) {
     e.stopPropagation();
     const menu = $("#views-dd-menu");
     const btn = $("#views-dd-btn");
     if (!menu || !btn) return;
+    closeFiltersPanel();
+    closeLangDropdown();
+    closeThemeDropdown();
+    const open = menu.classList.contains("hidden");
+    menu.classList.toggle("hidden", !open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function toggleLangDropdown(e) {
+    e.stopPropagation();
+    const menu = $("#lang-dd-menu");
+    const btn = $("#lang-dd-btn");
+    if (!menu || !btn) return;
+    closeViewsDropdown();
+    closeThemeDropdown();
+    closeFiltersPanel();
+    const open = menu.classList.contains("hidden");
+    menu.classList.toggle("hidden", !open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function toggleThemeDropdown(e) {
+    e.stopPropagation();
+    const menu = $("#theme-dd-menu");
+    const btn = $("#theme-dd-btn");
+    if (!menu || !btn) return;
+    closeViewsDropdown();
+    closeLangDropdown();
     closeFiltersPanel();
     const open = menu.classList.contains("hidden");
     menu.classList.toggle("hidden", !open);
@@ -150,6 +200,8 @@
     const btn = $("#filters-dd-btn");
     if (!wrap || !btn) return;
     closeViewsDropdown();
+    closeLangDropdown();
+    closeThemeDropdown();
     const open = !wrap.classList.contains("is-open");
     if (open) {
       wrap.classList.add("is-open");
@@ -198,6 +250,7 @@
       }
       if (typeof data.groupToolbar === "boolean") state.groupToolbar = data.groupToolbar;
       if (data.lang === "en" || data.lang === "el") state.lang = data.lang;
+      if (THEMES.includes(data.theme)) state.theme = data.theme;
       if (CAL_MODES.includes(data.calMode)) state.calMode = data.calMode;
       if (RAILS_LAYOUTS.includes(data.railsLayout)) state.railsLayout = data.railsLayout;
       if (typeof data.railsHorizon === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.railsHorizon)) {
@@ -226,6 +279,7 @@
           cardsPerRow: state.cardsPerRow,
           groupToolbar: state.groupToolbar,
           lang: state.lang,
+          theme: state.theme,
           calMode: state.calMode,
           railsLayout: state.railsLayout,
           railsHorizon: state.railsHorizon,
@@ -266,17 +320,34 @@
   }
 
   function syncLangButtons() {
-    const en = $("#lang-en");
-    const el = $("#lang-el");
-    if (en) {
-      en.classList.toggle("active", state.lang === "en");
-      en.setAttribute("aria-pressed", state.lang === "en" ? "true" : "false");
+    const flag = $("#lang-dd-flag");
+    if (flag) {
+      flag.src = state.lang === "el" ? "icons/flag-gr.svg" : "icons/flag-gb.svg";
     }
-    if (el) {
-      el.classList.toggle("active", state.lang === "el");
-      el.setAttribute("aria-pressed", state.lang === "el" ? "true" : "false");
-    }
+    $$("#lang-dd-menu [data-lang]").forEach((btn) => {
+      const on = btn.dataset.lang === state.lang;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
     document.documentElement.lang = state.lang === "el" ? "el" : "en";
+  }
+
+  function syncThemeUi() {
+    document.documentElement.setAttribute("data-theme", state.theme);
+    const label = $("#theme-dd-label");
+    if (label) label.textContent = THEME_LABELS[state.theme] || "Theme";
+    $$("#theme-dd-menu [data-theme-choice]").forEach((btn) => {
+      const on = btn.dataset.themeChoice === state.theme;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
+  function setTheme(theme) {
+    if (!THEMES.includes(theme)) return;
+    state.theme = theme;
+    syncThemeUi();
+    saveSettings();
   }
 
   function setLang(lang) {
@@ -294,6 +365,7 @@
       const id = state.selected.id;
       if (!$("#detail").classList.contains("hidden")) openDetail(id);
     }
+    closeLangDropdown();
   }
 
   function applySettingsToForm() {
@@ -535,14 +607,12 @@
     const changed = key !== state.focusMonth;
     state.focusMonth = key;
     if (changed) saveSettings();
-    if (!fromCalendar && state.calendar) {
-      const cur = monthKeyFromDate(state.calendar.getDate());
-      if (cur !== key) {
-        const [y, m] = key.split("-").map(Number);
-        state._ignoreDatesSet = true;
-        state.calendar.gotoDate(new Date(y, m - 1, 1));
-        state._ignoreDatesSet = false;
+    if (!fromCalendar && state.view === "calendar") {
+      const today = todayISO();
+      if (!state.agendaDay || state.agendaDay.slice(0, 7) !== key) {
+        state.agendaDay = today.slice(0, 7) === key ? today : `${key}-01`;
       }
+      renderCustomCalendar();
     }
     updateMonthNav();
     if (state.view === "cards" || state.view === "table") renderList();
@@ -634,16 +704,9 @@
     if (name === "calendar") {
       requestAnimationFrame(() => {
         ensureCalendar();
-        applyCalendarOptions();
-        applyCalMode(state.calMode, true);
-        syncCalendar();
-        setFocusMonth(state.focusMonth || monthKeyFromDate(new Date()));
+        setFocusMonth(state.focusMonth || monthKeyFromDate(new Date()), true);
         if (!state.agendaDay) state.agendaDay = todayISO();
-        if (state.calMode === "month") {
-          paintAgendaDay();
-          renderAgenda();
-        }
-        if (state.calendar) state.calendar.updateSize();
+        applyCalMode(state.calMode, true);
       });
     }
   }
@@ -1071,7 +1134,12 @@
       const d = parseISO(day);
       const head = document.createElement("header");
       head.className = "rails-day-head";
-      head.innerHTML = `<span class="rails-dow">${d.toLocaleDateString(undefined, { weekday: "short" })}</span><span class="rails-date">${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>`;
+      head.innerHTML = `<span class="rails-dow">${d.toLocaleDateString(undefined, {
+        weekday: "short",
+      })}</span><span class="rails-date-sep" aria-hidden="true">·</span><span class="rails-date">${d.toLocaleDateString(
+        undefined,
+        { month: "short", day: "numeric" }
+      )}</span>`;
       col.appendChild(head);
       const list = document.createElement("div");
       list.className = "rails-day-events";
@@ -1142,6 +1210,8 @@
       setBrandTitle(total);
       clearResultCount();
     }
+    const sc = $("#rails-scroll");
+    if (sc && state.railsLayout === "days") sc.scrollLeft = 0;
     requestAnimationFrame(updateRailsFade);
   }
 
@@ -1189,25 +1259,132 @@
     if (dayAgenda) dayAgenda.classList.toggle("hidden", mode !== "month");
     if (mode === "agenda") {
       renderCalAgendaFull();
-    } else if (state.calendar && FC_VIEWS[mode]) {
-      state.calendar.changeView(FC_VIEWS[mode]);
-      if (mode === "month") {
-        paintAgendaDay();
-        renderAgenda();
-      }
-      syncCalHeight();
-      requestAnimationFrame(() => state.calendar && state.calendar.updateSize());
     } else {
-      syncCalHeight();
+      renderCustomCalendar();
     }
     if (!skipSave) saveSettings();
   }
 
-  function syncCalHeight() {
-    if (!state.calendar) return;
-    const month = state.calMode === "month";
-    state.calendar.setOption("height", month ? "auto" : "100%");
-    state.calendar.setOption("expandRows", !month);
+  function calFocusDate() {
+    if (state.agendaDay) {
+      const d = parseISO(state.agendaDay);
+      if (d) return d;
+    }
+    if (state.focusMonth) {
+      const [y, m] = state.focusMonth.split("-").map(Number);
+      if (y && m) return new Date(y, m - 1, 1);
+    }
+    return new Date();
+  }
+
+  function shiftCal(unit, delta) {
+    const d = calFocusDate();
+    if (unit === "month") {
+      const next = new Date(d.getFullYear(), d.getMonth() + delta, 1);
+      const key = monthKeyFromDate(next);
+      const today = todayISO();
+      state.agendaDay = today.slice(0, 7) === key ? today : `${key}-01`;
+      setFocusMonth(key, true);
+      renderCustomCalendar();
+      return;
+    }
+    if (unit === "week") {
+      const next = addDays(d, delta * 7);
+      state.agendaDay = isoDate(next);
+      setFocusMonth(monthKeyFromDate(next), true);
+      renderCustomCalendar();
+      return;
+    }
+    const next = addDays(d, delta);
+    state.agendaDay = isoDate(next);
+    setFocusMonth(monthKeyFromDate(next), true);
+    renderCustomCalendar();
+  }
+
+  function goCalToday() {
+    const today = todayISO();
+    state.agendaDay = today;
+    setFocusMonth(today.slice(0, 7), true);
+    renderCustomCalendar();
+  }
+
+  function renderCalNav(titleText, openMonthPicker) {
+    const nav = $("#cal-nav-bar");
+    if (!nav) return;
+    nav.innerHTML = "";
+    const left = document.createElement("div");
+    left.className = "cal-nav-left";
+    const mkBtn = (label, cls, onClick) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = cls;
+      b.textContent = label;
+      b.addEventListener("click", onClick);
+      return b;
+    };
+    left.appendChild(mkBtn("‹", "cal-nav-btn", () => {
+      if (state.calMode === "month") shiftCal("month", -1);
+      else if (state.calMode === "week") shiftCal("week", -1);
+      else shiftCal("day", -1);
+    }));
+    left.appendChild(mkBtn("›", "cal-nav-btn", () => {
+      if (state.calMode === "month") shiftCal("month", 1);
+      else if (state.calMode === "week") shiftCal("week", 1);
+      else shiftCal("day", 1);
+    }));
+    left.appendChild(mkBtn("Today", "cal-nav-today", goCalToday));
+    const title = document.createElement("button");
+    title.type = "button";
+    title.className = "cal-nav-title";
+    title.textContent = titleText;
+    if (openMonthPicker) title.addEventListener("click", openMonthPopup);
+    nav.appendChild(left);
+    nav.appendChild(title);
+  }
+
+  function appendAgendaRows(host, items, { thumbs = true } = {}) {
+    host.innerHTML = "";
+    if (!items.length) {
+      const empty = document.createElement("p");
+      empty.className = "agenda-empty";
+      empty.textContent = "No events this day.";
+      host.appendChild(empty);
+      return;
+    }
+    items.forEach((ev) => {
+      const row = document.createElement("article");
+      row.className = "agenda-row" + (isAllDay(ev) ? " all-day" : "");
+      if (thumbs) {
+        const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+        const img = document.createElement("img");
+        img.className = "agenda-thumb" + (thumb ? "" : " no-img");
+        if (thumb) {
+          img.src = thumb;
+          img.alt = "";
+          img.loading = "lazy";
+        }
+        row.appendChild(img);
+      }
+      const info = document.createElement("div");
+      info.className = "agenda-info";
+      const name = document.createElement("h3");
+      name.className = "agenda-title";
+      name.textContent = ev.title || "Untitled";
+      const meta = document.createElement("p");
+      meta.className = "agenda-meta";
+      const timePart = ev.time || "All day";
+      const locPart = (ev.location || "").trim();
+      meta.textContent = locPart ? `${timePart} · ${locPart}` : timePart;
+      info.appendChild(name);
+      info.appendChild(meta);
+      row.appendChild(info);
+      row.appendChild(starButton(ev.id));
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".star-btn")) return;
+        openDetail(ev.id);
+      });
+      host.appendChild(row);
+    });
   }
 
   function renderCalAgendaFull() {
@@ -1240,43 +1417,10 @@
         year: "numeric",
       });
       host.appendChild(head);
-      grouped
-        .get(day)
-        .slice()
-        .sort(sortSoonest)
-        .forEach((ev) => {
-          const row = document.createElement("article");
-          row.className = "agenda-row" + (isAllDay(ev) ? " all-day" : "");
-          row.tabIndex = 0;
-          row.innerHTML = `<h3 class="agenda-title">${escapeHtml(ev.title || "Untitled")}</h3><p class="agenda-meta">${escapeHtml(
-            fmtWhen(ev)
-          )}${ev.location ? ` · ${escapeHtml(ev.location)}` : ""}</p>`;
-          row.addEventListener("click", () => openDetail(ev.id));
-          host.appendChild(row);
-        });
-    });
-  }
-
-  function calendarEvents() {
-    return state.filtered.map((ev) => {
-      const timed = Boolean(ev.time);
-      const start = timed ? `${ev.date}T${ev.time}:00` : ev.date;
-      let end = undefined;
-      if (ev.endDate && ev.endDate !== ev.date) {
-        const d = parseISO(ev.endDate);
-        end = d ? isoDate(addDays(d, 1)) : undefined;
-      }
-      const item = {
-        id: ev.id,
-        title: ev.title || "Untitled",
-        start,
-        allDay: !timed,
-        extendedProps: {
-          location: ev.location || "",
-        },
-      };
-      if (end) item.end = end;
-      return item;
+      const list = document.createElement("div");
+      list.className = "cal-agenda-day-list";
+      appendAgendaRows(list, grouped.get(day).slice().sort(sortSoonest), { thumbs: true });
+      host.appendChild(list);
     });
   }
 
@@ -1294,7 +1438,7 @@
   }
 
   function paintAgendaDay() {
-    $$("#calendar .fc-daygrid-day").forEach((el) => {
+    $$("#calendar .cal-day").forEach((el) => {
       el.classList.toggle("agenda-selected", el.getAttribute("data-date") === state.agendaDay);
     });
   }
@@ -1312,47 +1456,188 @@
           year: "numeric",
         })
       : "Select a day";
-    const items = state.agendaDay ? eventsOnDay(state.agendaDay) : [];
-    list.innerHTML = "";
-    if (!items.length) {
-      const empty = document.createElement("p");
-      empty.className = "agenda-empty";
-      empty.textContent = "No events this day.";
-      list.appendChild(empty);
-      return;
+    appendAgendaRows(list, state.agendaDay ? eventsOnDay(state.agendaDay) : []);
+  }
+
+  function renderMonthGrid(host) {
+    ensureFocusMonth();
+    const [y, m] = state.focusMonth.split("-").map(Number);
+    const first = new Date(y, m - 1, 1);
+    const startPad = (first.getDay() + 6) % 7;
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const prevDays = new Date(y, m - 1, 0).getDate();
+    const today = todayISO();
+    const cells = [];
+    for (let i = 0; i < startPad; i++) {
+      const day = prevDays - startPad + i + 1;
+      const d = new Date(y, m - 2, day);
+      cells.push({ iso: isoDate(d), num: day, muted: true });
     }
-    items.forEach((ev) => {
-      const row = document.createElement("article");
-      row.className = "agenda-row" + (isAllDay(ev) ? " all-day" : "");
-      const thumb = imageUrl(ev, true) || imageUrl(ev, false);
-      const img = document.createElement("img");
-      img.className = "agenda-thumb" + (thumb ? "" : " no-img");
-      if (thumb) {
-        img.src = thumb;
-        img.alt = "";
-        img.loading = "lazy";
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(y, m - 1, day);
+      cells.push({ iso: isoDate(d), num: day, muted: false });
+    }
+    while (cells.length % 7 !== 0) {
+      const i = cells.length - startPad - daysInMonth + 1;
+      const d = new Date(y, m, i);
+      cells.push({ iso: isoDate(d), num: d.getDate(), muted: true });
+    }
+    const grid = document.createElement("div");
+    grid.className = "cal-month";
+    const dows = document.createElement("div");
+    dows.className = "cal-dows";
+    const narrow = window.matchMedia("(max-width: 599px)").matches;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(2024, 0, 1 + i);
+      const cell = document.createElement("div");
+      cell.className = "cal-dow";
+      cell.textContent = d.toLocaleDateString(undefined, { weekday: narrow ? "narrow" : "short" });
+      dows.appendChild(cell);
+    }
+    grid.appendChild(dows);
+    const body = document.createElement("div");
+    body.className = "cal-days";
+    cells.forEach(({ iso, num, muted }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cal-day" + (muted ? " muted" : "") + (iso === today ? " today" : "");
+      btn.dataset.date = iso;
+      btn.innerHTML = `<span class="cal-day-num">${num}</span>`;
+      const count = eventsOnDay(iso).length;
+      if (count) {
+        const badge = document.createElement("span");
+        badge.className = "cal-day-count";
+        badge.textContent = String(count);
+        btn.appendChild(badge);
       }
-      row.appendChild(img);
-      const info = document.createElement("div");
-      info.style.minWidth = "0";
-      const name = document.createElement("h3");
-      name.className = "agenda-title";
-      name.textContent = ev.title || "Untitled";
-      const meta = document.createElement("p");
-      meta.className = "agenda-meta";
-      const timePart = ev.time || "All day";
-      const locPart = (ev.location || "").trim();
-      meta.textContent = locPart ? `${timePart} · ${locPart}` : timePart;
-      info.appendChild(name);
-      info.appendChild(meta);
-      row.appendChild(info);
-      row.appendChild(starButton(ev.id));
-      row.addEventListener("click", (e) => {
-        if (e.target.closest(".star-btn")) return;
-        openDetail(ev.id);
-      });
-      list.appendChild(row);
+      btn.addEventListener("click", () => selectAgendaDay(iso));
+      body.appendChild(btn);
     });
+    grid.appendChild(body);
+    host.appendChild(grid);
+    paintAgendaDay();
+    renderAgenda();
+  }
+
+  function renderWeekBoard(host) {
+    const focus = calFocusDate();
+    const start = printWeekStart(focus);
+    const wrap = document.createElement("div");
+    wrap.className = "cal-week-scroll rails-like";
+    const track = document.createElement("div");
+    track.className = "cal-week-track";
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(start, i);
+      const iso = isoDate(d);
+      const col = document.createElement("div");
+      col.className = "rails-day cal-week-day" + (iso === state.agendaDay ? " selected" : "");
+      const head = document.createElement("button");
+      head.type = "button";
+      head.className = "rails-day-head";
+      const dow = d.toLocaleDateString(undefined, { weekday: "short" });
+      const date = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      head.innerHTML = `<span class="rails-dow">${escapeHtml(dow)}</span><span class="rails-date-sep" aria-hidden="true">·</span><span class="rails-date">${escapeHtml(
+        date
+      )}</span>`;
+      head.addEventListener("click", () => {
+        state.agendaDay = iso;
+        applyCalMode("day");
+      });
+      col.appendChild(head);
+      const list = document.createElement("div");
+      list.className = "rails-day-events";
+      const items = eventsOnDay(iso);
+      if (!items.length) {
+        const empty = document.createElement("p");
+        empty.className = "rails-none muted";
+        empty.textContent = "—";
+        list.appendChild(empty);
+      } else {
+        items.forEach((ev) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "rails-card";
+          const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+          btn.innerHTML = `${
+            thumb ? `<span class="rails-thumb" style="background-image:url('${escapeAttr(thumb)}')"></span>` : ""
+          }<span class="rails-card-body"><strong>${escapeHtml(
+            ev.title || "Untitled"
+          )}</strong><span class="rails-meta">${escapeHtml(ev.time || "All day")}${
+            ev.location ? ` · ${escapeHtml(ev.location)}` : ""
+          }</span></span>`;
+          btn.addEventListener("click", () => openDetail(ev.id));
+          list.appendChild(btn);
+        });
+      }
+      col.appendChild(list);
+      track.appendChild(col);
+    }
+    wrap.appendChild(track);
+    host.appendChild(wrap);
+    wrap.scrollLeft = 0;
+  }
+
+  function renderDayBoard(host) {
+    const iso = state.agendaDay || todayISO();
+    const wrap = document.createElement("div");
+    wrap.className = "cal-day-board";
+    appendAgendaRows(wrap, eventsOnDay(iso));
+    host.appendChild(wrap);
+  }
+
+  function renderCustomCalendar() {
+    const el = $("#calendar");
+    if (!el || state.calMode === "agenda") return;
+    ensureFocusMonth();
+    if (!state.agendaDay) {
+      const today = todayISO();
+      const key = state.focusMonth;
+      state.agendaDay = today.slice(0, 7) === key ? today : `${key}-01`;
+    }
+    el.innerHTML = "";
+    const focus = calFocusDate();
+    if (state.calMode === "month") {
+      renderCalNav(
+        focus.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+        true
+      );
+      renderMonthGrid(el);
+    } else if (state.calMode === "week") {
+      const start = printWeekStart(focus);
+      const end = addDays(start, 6);
+      const title = `${start.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      })} – ${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+      renderCalNav(title, false);
+      renderWeekBoard(el);
+    } else {
+      renderCalNav(
+        focus.toLocaleDateString(undefined, {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }),
+        false
+      );
+      renderDayBoard(el);
+    }
+  }
+
+  function ensureCalendar() {
+    if (!state.agendaDay) {
+      const today = todayISO();
+      const key = state.focusMonth || monthKeyFromDate(new Date());
+      state.agendaDay = today.slice(0, 7) === key ? today : `${key}-01`;
+    }
+    state.calendar = true;
+  }
+
+  function syncCalendar() {
+    if (state.view !== "calendar" || !state.calendar) return;
+    if (state.calMode === "agenda") renderCalAgendaFull();
+    else renderCustomCalendar();
   }
 
   function renderPosters() {
@@ -1384,98 +1669,6 @@
         ? "No posters this month."
         : "No upcoming events.";
     }
-  }
-
-  function ensureCalendar() {
-    const el = $("#calendar");
-    if (state.calendar || !el || typeof FullCalendar === "undefined") return;
-    let initial = new Date();
-    if (state.focusMonth) {
-      const [y, m] = state.focusMonth.split("-").map(Number);
-      if (y && m) initial = new Date(y, m - 1, 1);
-    }
-    state.calendar = new FullCalendar.Calendar(el, {
-      initialView: FC_VIEWS[state.calMode] || "dayGridMonth",
-      initialDate: initial,
-      headerToolbar: {
-        left: "prev,next today",
-        center: "title",
-        right: "",
-      },
-      buttonText: { today: "Today" },
-      firstDay: 1,
-      weekends: true,
-      height: state.calMode === "month" ? "auto" : "100%",
-      expandRows: state.calMode !== "month",
-      dayHeaderFormat: calDayHeaderFormat(),
-      dayMaxEvents: 0,
-      navLinks: false,
-      moreLinkClick: (info) => {
-        info.jsEvent.preventDefault();
-        selectAgendaDay(isoDate(info.date));
-      },
-      moreLinkContent: (arg) => ({ html: `<span class="fc-dot-count">${arg.num}</span>` }),
-      displayEventEnd: false,
-      forceEventDuration: false,
-      events: calendarEvents(),
-      dateClick: (info) => selectAgendaDay(info.dateStr),
-      eventClick: (info) => {
-        info.jsEvent.preventDefault();
-        openDetail(info.event.id);
-      },
-      datesSet: (info) => {
-        const key = monthKeyFromDate(info.view.currentStart);
-        if (!state._ignoreDatesSet) setFocusMonth(key, true);
-        const inMonth =
-          state.agendaDay && state.agendaDay.slice(0, 7) === key ? state.agendaDay : "";
-        if (!inMonth) {
-          const today = todayISO();
-          state.agendaDay = today.slice(0, 7) === key ? today : `${key}-01`;
-        }
-        requestAnimationFrame(() => {
-          if (state.calMode === "month") {
-            paintAgendaDay();
-            renderAgenda();
-          }
-        });
-      },
-    });
-    state.calendar.render();
-    applyCalMode(state.calMode, true);
-    const fcTitle = el.querySelector(".fc-toolbar-title");
-    if (fcTitle) {
-      fcTitle.style.cursor = "pointer";
-      fcTitle.addEventListener("click", openMonthPopup);
-    }
-    if (!state.agendaDay) {
-      const today = todayISO();
-      const key = state.focusMonth || monthKeyFromDate(new Date());
-      state.agendaDay = today.slice(0, 7) === key ? today : `${key}-01`;
-    }
-    paintAgendaDay();
-    renderAgenda();
-  }
-
-  function syncCalendar() {
-    if (!state.calendar) return;
-    applyCalendarOptions();
-    state.calendar.removeAllEvents();
-    calendarEvents().forEach((ev) => state.calendar.addEvent(ev));
-  }
-
-  function calDayHeaderFormat() {
-    return window.matchMedia("(max-width: 599px)").matches
-      ? { weekday: "narrow" }
-      : { weekday: "short" };
-  }
-
-  function applyCalendarOptions() {
-    if (!state.calendar) return;
-    state.calendar.setOption("firstDay", 1);
-    state.calendar.setOption("weekends", true);
-    state.calendar.setOption("dayMaxEvents", 0);
-    state.calendar.setOption("dayHeaderFormat", calDayHeaderFormat());
-    syncCalHeight();
   }
 
   function ensureMap() {
@@ -1596,14 +1789,7 @@
     renderList();
     if (state.view === "rails") renderRails();
     if (state.view === "posters") renderPosters();
-    if (state.calMode === "agenda" && state.view === "calendar") renderCalAgendaFull();
-    if (state.calendar) {
-      syncCalendar();
-      if (state.calMode === "month") {
-        paintAgendaDay();
-        renderAgenda();
-      }
-    }
+    if (state.view === "calendar") syncCalendar();
     if (state.map) {
       renderMarkers();
       if (state.view === "map") fitMap();
@@ -1950,16 +2136,11 @@
   }
 
   function printFocusDate() {
-    if (state.calendar) {
-      try {
-        return state.calendar.getDate();
-      } catch (_) {}
-    }
     if (state.agendaDay) {
       const d = parseISO(state.agendaDay);
       if (d) return d;
     }
-    return new Date();
+    return calFocusDate();
   }
 
   function printWeekStart(d) {
@@ -2414,16 +2595,8 @@
       html += `<button type="button" data-group-toolbar="${grouped}" class="${active.trim()}">${label}</button>`;
     });
     html += "</div></div>";
-    html += '<p class="settings-hint muted">Group = Views/Filters menus. Rail = scrollable bars.</p>';
-    html += '<div class="settings-row"><label>Language</label><div class="settings-choices">';
-    [
-      ["en", "icons/flag-gb.svg", "English"],
-      ["el", "icons/flag-gr.svg", "Ελληνικά"],
-    ].forEach(([code, src, label]) => {
-      const active = state.lang === code ? " active" : "";
-      html += `<button type="button" data-lang="${code}" class="lang-choice${active}" title="${label}" aria-label="${label}"><img class="lang-flag" src="${src}" alt="" width="20" height="15" decoding="async" /></button>`;
-    });
-    html += "</div></div>";
+    html +=
+      '<p class="settings-hint muted">Group = Views/Filters menus.\nRail = scrollable bars.</p>';
     if (state.deferredInstall) {
       html += '<div class="settings-row"><button type="button" class="btn primary" data-install>Install app</button></div>';
     } else if (isIos() && !isStandalone()) {
@@ -2447,13 +2620,6 @@
         applyToolbarLayout();
         saveSettings();
         popup.querySelectorAll("[data-group-toolbar]").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-      })
-    );
-    popup.querySelectorAll("[data-lang]").forEach((btn) =>
-      btn.addEventListener("click", () => {
-        setLang(btn.dataset.lang);
-        popup.querySelectorAll("[data-lang]").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
       })
     );
@@ -2527,9 +2693,26 @@
         setView(btn.dataset.view);
       })
     );
+    $("#lang-dd-btn")?.addEventListener("click", toggleLangDropdown);
+    $$("#lang-dd-menu [data-lang]").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setLang(btn.dataset.lang);
+      })
+    );
+    $("#theme-dd-btn")?.addEventListener("click", toggleThemeDropdown);
+    $$("#theme-dd-menu [data-theme-choice]").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setTheme(btn.dataset.themeChoice);
+        closeThemeDropdown();
+      })
+    );
     $("#filters-dd-btn").addEventListener("click", toggleFiltersPanel);
     document.addEventListener("click", (e) => {
       if (!e.target.closest("#views-dd")) closeViewsDropdown();
+      if (!e.target.closest("#lang-dd")) closeLangDropdown();
+      if (!e.target.closest("#theme-dd")) closeThemeDropdown();
       if (
         useGroupedToolbar() &&
         $("#filters-wrap")?.classList.contains("is-open") &&
@@ -2547,9 +2730,6 @@
       e.stopPropagation();
       openSettingsPopup();
     });
-    $$(".lang-btn").forEach((btn) =>
-      btn.addEventListener("click", () => setLang(btn.dataset.lang))
-    );
     $("#btn-about").addEventListener("click", () => $("#about").classList.remove("hidden"));
     $("#detail-star").addEventListener("click", (e) => {
       if (state.selected) toggleStar(state.selected.id, e);
@@ -2672,6 +2852,8 @@
       if (e.key === "Escape") {
         if ([...$$(".cal-menu")].some((m) => !m.classList.contains("hidden"))) closeCalMenus();
         else if (!$("#views-dd-menu").classList.contains("hidden")) closeViewsDropdown();
+        else if ($("#lang-dd-menu") && !$("#lang-dd-menu").classList.contains("hidden")) closeLangDropdown();
+        else if ($("#theme-dd-menu") && !$("#theme-dd-menu").classList.contains("hidden")) closeThemeDropdown();
         else if (![...$$(".filter-popup")].every((p) => p.classList.contains("hidden"))) closeFilterPopups();
         else if ($("#filters-wrap")?.classList.contains("is-open")) closeFiltersPanel();
         else if (!$("#settings-popup").classList.contains("hidden")) closeSettingsPopup();
@@ -2686,9 +2868,8 @@
     window.addEventListener("resize", () => {
       applyToolbarLayout();
       refreshHScrollFades();
-      if (state.calendar && state.view === "calendar") {
-        applyCalendarOptions();
-        state.calendar.updateSize();
+      if (state.view === "calendar" && state.calMode !== "agenda") {
+        renderCustomCalendar();
       }
     });
   }
@@ -2702,6 +2883,7 @@
     state.enabledViews = parseEnabledViews();
     state.printEnabled = parsePrintEnabled();
     loadSettings();
+    syncThemeUi();
     ensureRailsHorizon();
     const today = todayISO();
     if (!state.dateFrom || state.dateFrom < today) state.dateFrom = today;

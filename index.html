@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="system">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -30,6 +30,12 @@
       ["starred", true],
     ];
     window.SITE_PRINT = true;
+    try {
+      var _s = JSON.parse(localStorage.getItem("events-site-settings-v1") || "{}");
+      if (_s.theme === "light" || _s.theme === "dark" || _s.theme === "system") {
+        document.documentElement.setAttribute("data-theme", _s.theme);
+      }
+    } catch (e) {}
   </script>
 </head>
 <body>
@@ -58,17 +64,40 @@
         Filters
       </button>
       <div class="top-actions">
-        <div class="lang-switch" role="group" aria-label="Language">
-          <button type="button" id="lang-en" class="lang-btn active" data-lang="en" aria-pressed="true" title="English" aria-label="English">
-            <img class="lang-flag" src="icons/flag-gb.svg" alt="" width="20" height="15" decoding="async" />
+        <div class="action-dd" id="lang-dd">
+          <button type="button" id="lang-dd-btn" class="action-dd-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Language">
+            <img id="lang-dd-flag" class="lang-flag" src="icons/flag-gb.svg" alt="" width="20" height="15" decoding="async" />
+            <span class="views-dd-caret" aria-hidden="true">▾</span>
           </button>
-          <button type="button" id="lang-el" class="lang-btn" data-lang="el" aria-pressed="false" title="Ελληνικά" aria-label="Ελληνικά">
-            <img class="lang-flag" src="icons/flag-gr.svg" alt="" width="20" height="15" decoding="async" />
+          <div id="lang-dd-menu" class="views-dd-menu hidden" role="listbox" aria-label="Language">
+            <button type="button" role="option" data-lang="en" class="lang-dd-opt">
+              <img class="lang-flag" src="icons/flag-gb.svg" alt="" width="20" height="15" decoding="async" />
+              English
+            </button>
+            <button type="button" role="option" data-lang="el" class="lang-dd-opt">
+              <img class="lang-flag" src="icons/flag-gr.svg" alt="" width="20" height="15" decoding="async" />
+              Ελληνικά
+            </button>
+          </div>
+        </div>
+        <div class="action-dd" id="theme-dd">
+          <button type="button" id="theme-dd-btn" class="action-dd-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Theme">
+            <span id="theme-dd-label">Theme</span>
+            <span class="views-dd-caret" aria-hidden="true">▾</span>
           </button>
+          <div id="theme-dd-menu" class="views-dd-menu hidden" role="listbox" aria-label="Theme">
+            <button type="button" role="option" data-theme-choice="light">Light</button>
+            <button type="button" role="option" data-theme-choice="dark">Dark</button>
+            <button type="button" role="option" data-theme-choice="system">System</button>
+          </div>
         </div>
         <button type="button" id="btn-install" class="icon-btn hidden" aria-label="Install app" title="Install app">↓</button>
         <button type="button" id="btn-print" class="icon-btn" aria-label="Print" title="Print">⎙</button>
-        <button type="button" id="btn-settings" class="icon-btn" aria-label="Settings" title="Settings">⚙</button>
+        <button type="button" id="btn-settings" class="icon-btn" aria-label="Settings" title="Settings">
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.07 7.07 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.22-1.13.53-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.08a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.83 14.76a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.68.24l2.39-.96c.5.41 1.05.73 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.58-.22 1.13-.53 1.63-.94l2.39.96c.25.1.54 0 .68-.24l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
+          </svg>
+        </button>
         <button type="button" id="btn-about" class="icon-btn" aria-label="About" title="About">?</button>
       </div>
     </div>
@@ -203,7 +232,10 @@
         </div>
       </div>
       <div class="cal-layout">
-        <div id="calendar"></div>
+        <div class="cal-main">
+          <div class="cal-nav-bar" id="cal-nav-bar"></div>
+          <div id="calendar"></div>
+        </div>
         <aside id="day-agenda" class="day-agenda" aria-label="Selected day">
           <h2 id="agenda-title">Select a day</h2>
           <div id="agenda-list"></div>
@@ -281,7 +313,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
   <script src="js/site.js"></script>
 </body>
 </html>
