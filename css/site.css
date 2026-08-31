@@ -2580,12 +2580,19 @@ body.cal-mode-day .cal-layout #calendar {
   background: rgba(28, 25, 23, 0.45);
 }
 
-.detail-panel {
+.detail-sheet {
   position: relative;
   z-index: 1;
   width: min(640px, 100%);
   max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-panel {
   overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
   background: var(--card);
   border-radius: 24px 24px 0 0;
   box-shadow: var(--shadow);
@@ -2597,9 +2604,12 @@ body.cal-mode-day .cal-layout #calendar {
     padding: 1rem;
   }
 
+  .detail-sheet {
+    max-height: 90vh;
+  }
+
   .detail-panel {
     border-radius: var(--radius);
-    max-height: 90vh;
   }
 }
 
@@ -2607,7 +2617,7 @@ body.cal-mode-day .cal-layout #calendar {
   position: absolute;
   top: 0.65rem;
   right: 0.65rem;
-  z-index: 2;
+  z-index: 10;
   width: 2.2rem;
   height: 2.2rem;
   border: 0;
@@ -2616,6 +2626,7 @@ body.cal-mode-day .cal-layout #calendar {
   font-size: 1.4rem;
   line-height: 1;
   cursor: pointer;
+  box-shadow: 0 1px 6px rgba(28, 25, 23, 0.18);
 }
 
 .detail-hero {
@@ -2706,6 +2717,16 @@ body.cal-mode-day .cal-layout #calendar {
   white-space: pre-wrap;
   color: var(--ink);
   font-size: 0.95rem;
+}
+
+.notes a {
+  color: var(--teal-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.notes a:hover {
+  color: var(--teal);
 }
 
 .mini-map {

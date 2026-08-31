@@ -257,10 +257,11 @@
 
   <div id="detail" class="detail hidden" role="dialog" aria-modal="true" aria-labelledby="detail-title">
     <div class="detail-backdrop" data-close></div>
-    <article class="detail-panel">
+    <div class="detail-sheet">
       <button type="button" class="detail-close" data-close aria-label="Close">×</button>
-      <button type="button" id="detail-hero" class="detail-hero" aria-label="View full image"></button>
-      <div class="detail-body">
+      <article class="detail-panel">
+        <button type="button" id="detail-hero" class="detail-hero" aria-label="View full image"></button>
+        <div class="detail-body">
         <p id="detail-cats" class="chips detail-chips"></p>
         <div class="detail-title-row">
           <h2 id="detail-title"></h2>
@@ -290,8 +291,9 @@
           <a data-share="x" class="btn ghost" target="_blank" rel="noopener">X</a>
           <a data-share="mail" class="btn ghost">Mail</a>
         </div>
-      </div>
-    </article>
+        </div>
+      </article>
+    </div>
   </div>
 
   <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Full image">

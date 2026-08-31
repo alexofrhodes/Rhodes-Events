@@ -1939,7 +1939,15 @@
       span.disabled = true;
       cats.appendChild(span);
     });
-    $("#detail-notes").textContent = (ev.notes || "").trim();
+    const notesEl = $("#detail-notes");
+    const notesHtml = formatNotesHtml(ev.notes);
+    if (notesHtml) {
+      notesEl.innerHTML = notesHtml;
+      notesEl.classList.remove("hidden");
+    } else {
+      notesEl.textContent = "";
+      notesEl.classList.add("hidden");
+    }
     $("#share-row").classList.add("hidden");
     $("#btn-gcal").href = googleCalUrl(ev);
     const hasCoords = ev.lat != null && ev.lng != null;
@@ -2182,6 +2190,33 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function safeNoteHref(raw) {
+    const url = String(raw || "").trim();
+    if (/^https?:\/\//i.test(url)) return url;
+    if (/^www\./i.test(url)) return `https://${url}`;
+    return "";
+  }
+
+  /** Escape HTML, then linkify [label](url) and plain http(s)/www URLs. */
+  function formatNotesHtml(text) {
+    let html = escapeHtml((text || "").trim());
+    if (!html) return "";
+    html = html.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) => {
+      const href = safeNoteHref(url);
+      if (!href) return `[${label}](${url})`;
+      return `<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    });
+    html = html.replace(
+      /(^|[\s(])((?:https?:\/\/|www\.)[^\s<]+[^\s.,;:!?)\]'\"<])/gi,
+      (match, prefix, url) => {
+        const href = safeNoteHref(url);
+        if (!href) return match;
+        return `${prefix}<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      }
+    );
+    return html;
   }
 
   function escapeAttr(value) {
