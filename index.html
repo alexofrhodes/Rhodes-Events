@@ -258,7 +258,10 @@
   <div id="detail" class="detail hidden" role="dialog" aria-modal="true" aria-labelledby="detail-title">
     <div class="detail-backdrop" data-close></div>
     <div class="detail-sheet">
-      <button type="button" class="detail-close" data-close aria-label="Close">×</button>
+      <div class="detail-sheet-chrome" data-detail-drag>
+        <div class="detail-grabber" aria-hidden="true"></div>
+        <button type="button" class="detail-close" data-close aria-label="Close">×</button>
+      </div>
       <article class="detail-panel">
         <button type="button" id="detail-hero" class="detail-hero" aria-label="View full image"></button>
         <div class="detail-body">

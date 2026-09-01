@@ -1962,6 +1962,60 @@
       nav.classList.add("hidden");
     }
     renderMiniMap(ev);
+    const sheet = $(".detail-sheet");
+    if (sheet) {
+      sheet.classList.remove("is-dragging");
+      sheet.style.transform = "";
+    }
+  }
+
+  function bindDetailDrawer() {
+    const sheet = $(".detail-sheet");
+    const chrome = sheet?.querySelector("[data-detail-drag]");
+    if (!sheet || !chrome) return;
+
+    let startY = 0;
+    let currentY = 0;
+    let dragging = false;
+
+    const resetSheet = () => {
+      sheet.classList.remove("is-dragging");
+      sheet.style.transform = "";
+      dragging = false;
+      currentY = 0;
+    };
+
+    const onPointerDown = (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      if (e.target.closest(".detail-close")) return;
+      dragging = true;
+      startY = e.clientY;
+      currentY = 0;
+      sheet.classList.add("is-dragging");
+      chrome.setPointerCapture?.(e.pointerId);
+    };
+
+    const onPointerMove = (e) => {
+      if (!dragging) return;
+      currentY = Math.max(0, e.clientY - startY);
+      sheet.style.transform = `translateY(${currentY}px)`;
+    };
+
+    const finishDrag = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      chrome.releasePointerCapture?.(e.pointerId);
+      if (currentY > 80) {
+        closeDetail();
+        return;
+      }
+      resetSheet();
+    };
+
+    chrome.addEventListener("pointerdown", onPointerDown);
+    chrome.addEventListener("pointermove", onPointerMove);
+    chrome.addEventListener("pointerup", finishDrag);
+    chrome.addEventListener("pointercancel", resetSheet);
   }
 
   function openLocationOnMap(ev) {
@@ -1978,6 +2032,11 @@
   }
 
   function closeDetail() {
+    const sheet = $(".detail-sheet");
+    if (sheet) {
+      sheet.classList.remove("is-dragging");
+      sheet.style.transform = "";
+    }
     $("#detail").classList.add("hidden");
     if (state.miniMap) {
       state.miniMap.remove();
@@ -2924,6 +2983,7 @@
       if (e.target.id === "lightbox") closeLightbox();
     });
     $$("[data-close]").forEach((el) => el.addEventListener("click", closeDetail));
+    bindDetailDrawer();
     bindCalMenu($("#btn-cal"), $("#cal-menu"), () => state.selected && downloadIcs(state.selected));
     $("#btn-share").addEventListener("click", () => state.selected && shareEvent(state.selected));
     document.addEventListener("click", (e) => {

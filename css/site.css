@@ -2570,8 +2570,12 @@ body.cal-mode-day .cal-layout #calendar {
   inset: 0;
   z-index: 3000;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: max(2.75rem, 10vh) 0 0;
+  padding-top: max(2.75rem, 10vh, env(safe-area-inset-top, 0px) + 2rem);
+  box-sizing: border-box;
 }
 
 .detail-backdrop {
@@ -2584,9 +2588,38 @@ body.cal-mode-day .cal-layout #calendar {
   position: relative;
   z-index: 1;
   width: min(640px, 100%);
-  max-height: 92vh;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
+  transform: translateY(0);
+  transition: transform 0.22s ease;
+  touch-action: pan-y;
+}
+
+.detail-sheet.is-dragging {
+  transition: none;
+}
+
+.detail-sheet-chrome {
+  position: relative;
+  flex: 0 0 auto;
+  background: var(--card);
+  border-radius: 24px 24px 0 0;
+  padding-top: 0.45rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.detail-sheet-chrome:active {
+  cursor: grabbing;
+}
+
+.detail-grabber {
+  width: 2.75rem;
+  height: 0.28rem;
+  margin: 0 auto 0.35rem;
+  border-radius: 999px;
+  background: #c4c1bc;
 }
 
 .detail-panel {
@@ -2594,28 +2627,13 @@ body.cal-mode-day .cal-layout #calendar {
   flex: 1 1 auto;
   min-height: 0;
   background: var(--card);
-  border-radius: 24px 24px 0 0;
+  border-radius: 0;
   box-shadow: var(--shadow);
-}
-
-@media (min-width: 720px) {
-  .detail {
-    align-items: center;
-    padding: 1rem;
-  }
-
-  .detail-sheet {
-    max-height: 90vh;
-  }
-
-  .detail-panel {
-    border-radius: var(--radius);
-  }
 }
 
 .detail-close {
   position: absolute;
-  top: 0.65rem;
+  top: 0.2rem;
   right: 0.65rem;
   z-index: 10;
   width: 2.2rem;
