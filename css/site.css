@@ -14,6 +14,9 @@
   --radius-sm: 12px;
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
   --surface: #ffffff;
+  --elevated: #ffffff;
+  --overlay: rgba(28, 25, 23, 0.45);
+  --sheet-shadow: 0 -4px 32px rgba(28, 25, 23, 0.12);
 }
 
 [data-theme="dark"] {
@@ -29,6 +32,9 @@
   --star-off: #78716c;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   --surface: #292524;
+  --elevated: #353230;
+  --overlay: rgba(0, 0, 0, 0.62);
+  --sheet-shadow: 0 -10px 44px rgba(0, 0, 0, 0.55);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -45,6 +51,9 @@
     --star-off: #78716c;
     --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     --surface: #292524;
+    --elevated: #353230;
+    --overlay: rgba(0, 0, 0, 0.62);
+    --sheet-shadow: 0 -10px 44px rgba(0, 0, 0, 0.55);
   }
 }
 
@@ -2576,12 +2585,19 @@ body.cal-mode-day .cal-layout #calendar {
   padding: max(2.75rem, 10vh) 0 0;
   padding-top: max(2.75rem, 10vh, env(safe-area-inset-top, 0px) + 2rem);
   box-sizing: border-box;
+  touch-action: none;
+}
+
+body.detail-open {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .detail-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(28, 25, 23, 0.45);
+  background: var(--overlay);
+  touch-action: none;
 }
 
 .detail-sheet {
@@ -2593,7 +2609,8 @@ body.cal-mode-day .cal-layout #calendar {
   flex-direction: column;
   transform: translateY(0);
   transition: transform 0.22s ease;
-  touch-action: pan-y;
+  touch-action: none;
+  box-shadow: var(--sheet-shadow);
 }
 
 .detail-sheet.is-dragging {
@@ -2603,8 +2620,9 @@ body.cal-mode-day .cal-layout #calendar {
 .detail-sheet-chrome {
   position: relative;
   flex: 0 0 auto;
-  background: var(--card);
+  background: var(--elevated);
   border-radius: 24px 24px 0 0;
+  border-top: 1px solid var(--line);
   padding-top: 0.45rem;
   cursor: grab;
   touch-action: none;
@@ -2619,16 +2637,19 @@ body.cal-mode-day .cal-layout #calendar {
   height: 0.28rem;
   margin: 0 auto 0.35rem;
   border-radius: 999px;
-  background: #c4c1bc;
+  background: var(--muted);
+  opacity: 0.55;
 }
 
 .detail-panel {
   overflow: auto;
   flex: 1 1 auto;
   min-height: 0;
-  background: var(--card);
+  background: var(--elevated);
   border-radius: 0;
-  box-shadow: var(--shadow);
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .detail-close {

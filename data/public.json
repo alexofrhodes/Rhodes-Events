@@ -1,6 +1,6 @@
 {
   "title": "Events",
-  "generated": "2026-09-01T11:17:45",
+  "generated": "2026-09-01T15:05:20",
   "center": {
     "lat": 36.451456,
     "lng": 28.2234119,
@@ -662,9 +662,9 @@
     },
     {
       "id": "3cb6c1dedf6d4a0cad2a9022120c3027",
-      "title": "3η Γιορτή Βασιλικού Δαματριάς",
+      "title": "3rd Basil Festival 3rd Basil Festival of Damatria",
       "titleOriginal": "3η Γιορτή Βασιλικού στη Δαματριά",
-      "titleTranslated": "3η Γιορτή Βασιλικού Δαματριάς",
+      "titleTranslated": "3rd Basil Festival 3rd Basil Festival of Damatria",
       "date": "2026-09-04",
       "endDate": "",
       "time": "21:00",
@@ -678,8 +678,8 @@
       "notesOriginal": "Ο Πολιτιστικός Σύλλογος Δαματριάς «Καλλιγένεια» διοργανώνει την 3η Γιορτή Βασιλικού την Παρασκευή 4 Σεπτεμβρίου και προσκαλεί κατοίκους και επισκέπτες σε μια ιδιαίτερη βραδιά, γεμάτη αρώματα, παραδοσιακές γεύσεις και ζωντανή μουσική. Στον ατμοσφαιρικό χώρο της Ιεράς Μονής Τιμίου Σταυρού Δαματριάς, οι παρευρισκόμενοι θα απολαύσουν φαγητό παρασκευασμένο με άρωμα βασιλικού, συνοδεία ζωντανού μουσικού προγράμματος.",
       "notesTranslated": "The Cultural Association of Damatria \"Kalligenia\" will host its 3rd Basil Festival on Friday, September 4. Residents and visitors are invited to a special evening filled with fragrant aromas, traditional flavors, and live music. Held at the atmospheric Holy Monastery of the Holy Cross in Damatria, the festival will offer attendees basil-infused dishes, complemented by a live music program.",
       "url": "https://www.rhodes.com.gr/ekdilosi/3i-giorti-vasilikoy-sti-damatria/",
-      "image": "img/3η_Γιορτή_Βασιλικού_Δαματριάς_3cb6c1dedf6d.jpg",
-      "thumb": "img/3η_Γιορτή_Βασιλικού_Δαματριάς_3cb6c1dedf6d_t.jpg",
+      "image": "img/3rd_Basil_Festival_3rd_Basil_Festival_of_3cb6c1dedf6d.jpg",
+      "thumb": "img/3rd_Basil_Festival_3rd_Basil_Festival_of_3cb6c1dedf6d_t.jpg",
       "lat": 36.38377073297315,
       "lng": 28.071656227111816
     },
@@ -1011,9 +1011,9 @@
       "locationKey": "Θέατρο Μεσαιωνικής Τάφρου «Μελίνα Μερκούρη",
       "artist": "",
       "category": [],
-      "notes": "For an hour and a half, Lambros dissects the minute details of everyday life that connect us all. He overanalyzes, sneers at his own existence, and complains about nearly everything, then proceeds to complain about what's left. With his rapid-fire delivery and his direct engagement with the audience, Lambros […",
-      "notesOriginal": "Ο Λάμπρος, όπως πάντα, βάζει στο μικροσκόπιο τις λεπτομέρειες της καθημερινότητας που μας ενώνουν. Για μιάμιση ώρα, αναλύει υπερβολικά τη ζωή, αυτοσαρκάζεται ακατάπαυστα, παραπονιέται για σχεδόν τα πάντα, και αμέσως μετά, παραπονιέται και για τα υπόλοιπα. Με τον καταιγιστικό ρυθμό του και την άμεση επικοινωνία που αναπτύσσει με το κοινό, ο Λάμπρος […]",
-      "notesTranslated": "For an hour and a half, Lambros dissects the minute details of everyday life that connect us all. He overanalyzes, sneers at his own existence, and complains about nearly everything, then proceeds to complain about what's left. With his rapid-fire delivery and his direct engagement with the audience, Lambros […",
+      "notes": "For an hour and a half, Lambros meticulously dissects the minute details of everyday life that connect us all. He overanalyzes, sneers at his own existence, and complains about nearly everything, then proceeds to complain about what's left. With his rapid-fire delivery and his direct engagement with the audience, Lambros masterfully draws his audience into his unique and often self-deprecating world of shared grievances.",
+      "notesOriginal": "Ο Λάμπρος, όπως πάντα, βάζει στο μικροσκόπιο τις λεπτομέρειες της καθημερινότητας που μας ενώνουν. Για μιάμιση ώρα, αναλύει υπερβολικά τη ζωή, αυτοσαρκάζεται ακατάπαυστα, παραπονιέται για σχεδόν τα πάντα, και αμέσως μετά, παραπονιέται και για τα υπόλοιπα. Με τον καταιγιστικό ρυθμό του και την άμεση επικοινωνία που αναπτύσσει με το κοινό, ο Λάμπρος καθηλώνει τους παρευρισκόμενους.",
+      "notesTranslated": "For an hour and a half, Lambros meticulously dissects the minute details of everyday life that connect us all. He overanalyzes, sneers at his own existence, and complains about nearly everything, then proceeds to complain about what's left. With his rapid-fire delivery and his direct engagement with the audience, Lambros masterfully draws his audience into his unique and often self-deprecating world of shared grievances.",
       "url": "https://www.rhodes.com.gr/ekdilosi/poly-kalytera-tora/",
       "image": "img/Πολύ_καλύτερα_τώρα_95f72e6d0c67.jpg",
       "thumb": "img/Πολύ_καλύτερα_τώρα_95f72e6d0c67_t.jpg",

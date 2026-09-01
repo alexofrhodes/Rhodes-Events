@@ -1891,6 +1891,48 @@
     $("#lightbox-img").removeAttribute("src");
   }
 
+  let detailScrollY = 0;
+  let detailClickBlockUntil = 0;
+
+  function blockDetailGhostClick(ms = 450) {
+    detailClickBlockUntil = Date.now() + ms;
+  }
+
+  function installDetailInteractionGuards() {
+    if (installDetailInteractionGuards.done) return;
+    installDetailInteractionGuards.done = true;
+    const swallowGhost = (e) => {
+      if (Date.now() >= detailClickBlockUntil) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+    document.addEventListener("click", swallowGhost, true);
+    document.addEventListener("pointerup", swallowGhost, true);
+  }
+
+  function lockDetailPageScroll() {
+    if (document.body.classList.contains("detail-open")) return;
+    detailScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    document.body.classList.add("detail-open");
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${detailScrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+  }
+
+  function unlockDetailPageScroll() {
+    if (!document.body.classList.contains("detail-open")) return;
+    document.body.classList.remove("detail-open");
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    window.scrollTo(0, detailScrollY);
+  }
+
   function openDetail(id) {
     const ev = findEvent(id);
     if (!ev) return;
@@ -1967,9 +2009,12 @@
       sheet.classList.remove("is-dragging");
       sheet.style.transform = "";
     }
+    lockDetailPageScroll();
   }
 
   function bindDetailDrawer() {
+    installDetailInteractionGuards();
+    const detail = $("#detail");
     const sheet = $(".detail-sheet");
     const chrome = sheet?.querySelector("[data-detail-drag]");
     if (!sheet || !chrome) return;
@@ -1977,18 +2022,21 @@
     let startY = 0;
     let currentY = 0;
     let dragging = false;
+    let dragMoved = false;
 
     const resetSheet = () => {
       sheet.classList.remove("is-dragging");
       sheet.style.transform = "";
       dragging = false;
       currentY = 0;
+      dragMoved = false;
     };
 
     const onPointerDown = (e) => {
       if (e.button !== undefined && e.button !== 0) return;
       if (e.target.closest(".detail-close")) return;
       dragging = true;
+      dragMoved = false;
       startY = e.clientY;
       currentY = 0;
       sheet.classList.add("is-dragging");
@@ -1997,8 +2045,12 @@
 
     const onPointerMove = (e) => {
       if (!dragging) return;
-      currentY = Math.max(0, e.clientY - startY);
+      const nextY = Math.max(0, e.clientY - startY);
+      if (nextY > 8) dragMoved = true;
+      if (!dragMoved) return;
+      currentY = nextY;
       sheet.style.transform = `translateY(${currentY}px)`;
+      e.preventDefault();
     };
 
     const finishDrag = (e) => {
@@ -2006,9 +2058,14 @@
       dragging = false;
       chrome.releasePointerCapture?.(e.pointerId);
       if (currentY > 80) {
+        e.preventDefault();
+        e.stopPropagation();
+        blockDetailGhostClick();
+        resetSheet();
         closeDetail();
         return;
       }
+      if (dragMoved) blockDetailGhostClick(300);
       resetSheet();
     };
 
@@ -2016,6 +2073,25 @@
     chrome.addEventListener("pointermove", onPointerMove);
     chrome.addEventListener("pointerup", finishDrag);
     chrome.addEventListener("pointercancel", resetSheet);
+
+    detail.addEventListener(
+      "wheel",
+      (e) => {
+        if (!$("#detail").classList.contains("hidden") && !e.target.closest(".detail-panel")) {
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+    detail.addEventListener(
+      "touchmove",
+      (e) => {
+        if ($("#detail").classList.contains("hidden")) return;
+        if (e.target.closest(".detail-panel")) return;
+        e.preventDefault();
+      },
+      { passive: false }
+    );
   }
 
   function openLocationOnMap(ev) {
@@ -2032,6 +2108,7 @@
   }
 
   function closeDetail() {
+    unlockDetailPageScroll();
     const sheet = $(".detail-sheet");
     if (sheet) {
       sheet.classList.remove("is-dragging");
