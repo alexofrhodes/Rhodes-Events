@@ -1893,9 +1893,14 @@
 
   let detailScrollY = 0;
   let detailClickBlockUntil = 0;
+  let detailScrollBlockUntil = 0;
 
   function blockDetailGhostClick(ms = 450) {
     detailClickBlockUntil = Date.now() + ms;
+  }
+
+  function blockDetailGhostScroll(ms = 400) {
+    detailScrollBlockUntil = Date.now() + ms;
   }
 
   function installDetailInteractionGuards() {
@@ -1907,8 +1912,15 @@
       e.stopPropagation();
       e.stopImmediatePropagation();
     };
+    const swallowGhostScroll = (e) => {
+      if (Date.now() >= detailScrollBlockUntil) return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
     document.addEventListener("click", swallowGhost, true);
     document.addEventListener("pointerup", swallowGhost, true);
+    document.addEventListener("touchmove", swallowGhostScroll, { capture: true, passive: false });
+    document.addEventListener("wheel", swallowGhostScroll, { capture: true, passive: false });
   }
 
   function lockDetailPageScroll() {
@@ -1922,15 +1934,21 @@
     document.body.style.width = "100%";
   }
 
+  function restoreDetailPageScroll(y) {
+    window.scrollTo({ top: y, left: 0, behavior: "instant" });
+  }
+
   function unlockDetailPageScroll() {
     if (!document.body.classList.contains("detail-open")) return;
+    const y = detailScrollY;
     document.body.classList.remove("detail-open");
     document.body.style.position = "";
     document.body.style.top = "";
     document.body.style.left = "";
     document.body.style.right = "";
     document.body.style.width = "";
-    window.scrollTo(0, detailScrollY);
+    restoreDetailPageScroll(y);
+    requestAnimationFrame(() => restoreDetailPageScroll(y));
   }
 
   function openDetail(id) {
@@ -2061,6 +2079,7 @@
         e.preventDefault();
         e.stopPropagation();
         blockDetailGhostClick();
+        blockDetailGhostScroll();
         resetSheet();
         closeDetail();
         return;
@@ -2108,7 +2127,6 @@
   }
 
   function closeDetail() {
-    unlockDetailPageScroll();
     const sheet = $(".detail-sheet");
     if (sheet) {
       sheet.classList.remove("is-dragging");
@@ -2124,6 +2142,9 @@
     }
     state.selected = null;
     state.heroSrc = "";
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => unlockDetailPageScroll());
+    });
   }
 
   function renderMiniMap(ev) {
