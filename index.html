@@ -307,12 +307,31 @@
   <div id="about" class="about hidden" role="dialog" aria-modal="true" aria-label="About">
     <div class="about-backdrop" data-about-close></div>
     <div class="about-panel">
-      <button type="button" class="detail-close" data-about-close aria-label="Close">×</button>
+      <button type="button" class="about-close" data-about-close aria-label="Close">×</button>
+      <p class="about-kicker">About</p>
       <p class="about-name">Alex of Rhodes</p>
-      <p class="about-links">
-        <a class="plain-link" href="mailto:alexofrhodes@gmail.com">alexofrhodes@gmail.com</a>
-        <a class="plain-link" href="https://github.com/alexofrhodes" target="_blank" rel="noopener">github.com/alexofrhodes</a>
-      </p>
+      <div class="about-group">
+        <div class="about-row">
+          <span class="about-label">Email</span>
+          <a class="about-value" href="mailto:alexofrhodes@gmail.com">alexofrhodes@gmail.com</a>
+        </div>
+        <div class="about-row">
+          <span class="about-label">GitHub</span>
+          <a class="about-value" href="https://github.com/alexofrhodes" target="_blank" rel="noopener">github.com/alexofrhodes</a>
+        </div>
+      </div>
+      <hr class="about-sep" />
+      <p class="about-kicker">Install app</p>
+      <div class="about-group">
+        <div class="about-row">
+          <span class="about-label">iPhone / iPad</span>
+          <span class="about-value about-value-plain">Share → Add to Home Screen</span>
+        </div>
+        <div class="about-row about-row-install">
+          <span class="about-label">Android / Chrome</span>
+          <button type="button" id="about-install" class="about-install-btn" disabled>Install</button>
+        </div>
+      </div>
       <p class="muted about-note">Stars stay in this browser only.</p>
     </div>
   </div>

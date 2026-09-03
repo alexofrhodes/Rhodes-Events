@@ -2921,9 +2921,17 @@
   }
 
   function updateInstallUi() {
+    const canInstall = Boolean(state.deferredInstall);
     const topBtn = $("#btn-install");
     if (topBtn) {
-      topBtn.classList.toggle("hidden", !state.deferredInstall);
+      topBtn.classList.toggle("hidden", !canInstall);
+    }
+    const aboutBtn = $("#about-install");
+    if (aboutBtn) {
+      aboutBtn.disabled = !canInstall;
+      aboutBtn.title = canInstall
+        ? "Install this app"
+        : "Install not available in this browser (or already installed)";
     }
     if (!$("#settings-popup").classList.contains("hidden")) renderSettingsPopup();
   }
@@ -2995,7 +3003,11 @@
       e.stopPropagation();
       openSettingsPopup();
     });
-    $("#btn-about").addEventListener("click", () => $("#about").classList.remove("hidden"));
+    $("#btn-about").addEventListener("click", () => {
+      updateInstallUi();
+      $("#about").classList.remove("hidden");
+    });
+    $("#about-install")?.addEventListener("click", () => promptInstall());
     $("#detail-star").addEventListener("click", (e) => {
       if (state.selected) toggleStar(state.selected.id, e);
     });
