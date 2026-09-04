@@ -3,10 +3,34 @@
 
   const SETTINGS_KEY = "events-site-settings-v1";
   const ALL_VIEWS = ["cards", "rails", "table", "posters", "calendar", "map", "starred"];
+  const ALL_FILTERS = ["search", "categories", "venues", "toggles"];
+  const VIEW_LABELS = {
+    cards: "Cards",
+    rails: "Rails",
+    table: "Table",
+    posters: "Posters",
+    calendar: "Calendar",
+    map: "Map",
+    starred: "Starred",
+  };
+  const FILTER_LABELS = {
+    search: "Search",
+    categories: "Categories",
+    venues: "Venues",
+    toggles: "Event toggles",
+  };
   const CAL_MODES = ["month", "week", "day", "agenda"];
   const RAILS_LAYOUTS = ["days", "cards"];
   const THEMES = ["light", "dark", "system"];
   const THEME_LABELS = { light: "Light", dark: "Dark", system: "System" };
+  const THEME_ICON_PATHS = {
+    light:
+      "M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42zM1 13h3v-2H1v2zm10-9h2V1h-2v3zm9.04-.55l-1.41-1.41-1.79 1.8 1.41 1.41 1.79-1.8zM17.24 18.16l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 11v2h3v-2h-3zm-8 9h2v3h-2v-3zM4.96 19.55l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8zM12 6a6 6 0 1 0 0 12A6 6 0 0 0 12 6z",
+    dark: "M12 2a10 10 0 1 0 10 10A8 8 0 0 1 12 2z",
+    system:
+      "M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9H4V6zm0 11h16v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1zm6 2h4v1h-4v-1z",
+  };
+  const LANG_FLAGS = { en: "icons/flag-gb.svg", el: "icons/flag-gr.svg" };
 
   const state = {
     data: null,
@@ -22,6 +46,7 @@
     agendaDay: "",
     categories: new Set(),
     venues: new Set(),
+    catMode: "or",
     search: "",
     dateFrom: "",
     dateTo: "",
@@ -34,7 +59,10 @@
     theme: "system",
     rawEvents: [],
     enabledViews: new Set(ALL_VIEWS),
+    hiddenViews: new Set(),
+    hiddenFilters: new Set(),
     printEnabled: true,
+    prevView: "cards",
     map: null,
     clusters: null,
     miniMap: null,
@@ -78,13 +106,33 @@
 
   function applyViewConfig() {
     $$(".top .views > .view-btn").forEach((btn) => {
-      btn.classList.toggle("hidden", !state.enabledViews.has(btn.dataset.view));
+      btn.classList.toggle("hidden", !viewIsAvailable(btn.dataset.view));
     });
-    $$("#views-dd-menu [data-view]").forEach((btn) => {
-      btn.classList.toggle("hidden", !state.enabledViews.has(btn.dataset.view));
+    $$(".top-view-btn").forEach((btn) => {
+      btn.classList.toggle("hidden", !viewIsAvailable(btn.dataset.view));
     });
     syncViewsDropdown();
     updatePrintButton();
+    applyFilterVisibility();
+    requestAnimationFrame(refreshHScrollFades);
+  }
+
+  function viewIsAvailable(name) {
+    return state.enabledViews.has(name) && !state.hiddenViews.has(name);
+  }
+
+  function applyFilterVisibility() {
+    ALL_FILTERS.forEach((key) => {
+      $$(`[data-filter="${key}"]`).forEach((el) => {
+        el.classList.toggle("ui-hidden", state.hiddenFilters.has(key));
+      });
+    });
+    const catsBtn = $("#btn-cats");
+    if (catsBtn) catsBtn.classList.toggle("ui-hidden", state.hiddenFilters.has("categories"));
+    const venuesBtn = $("#btn-venues");
+    if (venuesBtn) venuesBtn.classList.toggle("ui-hidden", state.hiddenFilters.has("venues"));
+    const togglesBtn = $("#btn-event-toggles");
+    if (togglesBtn) togglesBtn.classList.toggle("ui-hidden", state.hiddenFilters.has("toggles"));
     requestAnimationFrame(refreshHScrollFades);
   }
 
@@ -94,131 +142,239 @@
   }
 
   function syncViewsDropdown() {
-    const label = $("#views-dd-label");
-    if (label) label.textContent = viewLabel(state.view);
-    $$("#views-dd-menu [data-view]").forEach((btn) => {
+    $$(".top .views > .view-btn").forEach((btn) => {
       const on = btn.dataset.view === state.view;
       btn.classList.toggle("active", on);
       btn.setAttribute("aria-selected", on ? "true" : "false");
     });
   }
 
-  function closeViewsDropdown() {
-    const menu = $("#views-dd-menu");
-    const btn = $("#views-dd-btn");
-    if (menu) menu.classList.add("hidden");
-    if (btn) btn.setAttribute("aria-expanded", "false");
-  }
+  function closeViewsDropdown() {}
 
   function closeLangDropdown() {
-    const menu = $("#lang-dd-menu");
-    const btn = $("#lang-dd-btn");
-    if (menu) menu.classList.add("hidden");
-    if (btn) btn.setAttribute("aria-expanded", "false");
+    $("#lang-dd-menu")?.classList.add("hidden");
+    $("#lang-dd-btn")?.setAttribute("aria-expanded", "false");
   }
 
   function closeThemeDropdown() {
-    const menu = $("#theme-dd-menu");
-    const btn = $("#theme-dd-btn");
-    if (menu) menu.classList.add("hidden");
-    if (btn) btn.setAttribute("aria-expanded", "false");
+    $("#theme-dd-menu")?.classList.add("hidden");
+    $("#theme-dd-btn")?.setAttribute("aria-expanded", "false");
   }
 
   function closeActionDropdowns() {
-    closeViewsDropdown();
     closeLangDropdown();
     closeThemeDropdown();
-  }
-
-  function toggleViewsDropdown(e) {
-    e.stopPropagation();
-    const menu = $("#views-dd-menu");
-    const btn = $("#views-dd-btn");
-    if (!menu || !btn) return;
-    closeFiltersPanel();
-    closeLangDropdown();
-    closeThemeDropdown();
-    const open = menu.classList.contains("hidden");
-    menu.classList.toggle("hidden", !open);
-    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    closeShareDropdown();
   }
 
   function toggleLangDropdown(e) {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     const menu = $("#lang-dd-menu");
     const btn = $("#lang-dd-btn");
     if (!menu || !btn) return;
-    closeViewsDropdown();
-    closeThemeDropdown();
-    closeFiltersPanel();
     const open = menu.classList.contains("hidden");
-    menu.classList.toggle("hidden", !open);
-    btn.setAttribute("aria-expanded", open ? "true" : "false");
-  }
-
-  function toggleThemeDropdown(e) {
-    e.stopPropagation();
-    const menu = $("#theme-dd-menu");
-    const btn = $("#theme-dd-btn");
-    if (!menu || !btn) return;
-    closeViewsDropdown();
-    closeLangDropdown();
-    closeFiltersPanel();
-    const open = menu.classList.contains("hidden");
-    menu.classList.toggle("hidden", !open);
-    btn.setAttribute("aria-expanded", open ? "true" : "false");
-  }
-
-  function isNarrowToolbar() {
-    return window.matchMedia("(max-width: 639px)").matches;
-  }
-
-  function useGroupedToolbar() {
-    return isNarrowToolbar() && state.groupToolbar;
-  }
-
-  function applyToolbarLayout() {
-    document.body.classList.toggle("toolbar-rail", !state.groupToolbar && isNarrowToolbar());
-    if (!useGroupedToolbar()) closeFiltersPanel();
-    syncFiltersDdBtn();
-    requestAnimationFrame(refreshHScrollFades);
-  }
-
-  function closeFiltersPanel() {
-    const wrap = $("#filters-wrap");
-    const btn = $("#filters-dd-btn");
-    if (wrap) wrap.classList.remove("is-open");
-    if (btn) btn.setAttribute("aria-expanded", "false");
-    $("#cat-popup")?.classList.add("hidden");
-    $("#loc-popup")?.classList.add("hidden");
-  }
-
-  function toggleFiltersPanel(e) {
-    e.stopPropagation();
-    if (!useGroupedToolbar()) return;
-    const wrap = $("#filters-wrap");
-    const btn = $("#filters-dd-btn");
-    if (!wrap || !btn) return;
-    closeViewsDropdown();
-    closeLangDropdown();
     closeThemeDropdown();
-    const open = !wrap.classList.contains("is-open");
     if (open) {
-      wrap.classList.add("is-open");
+      menu.classList.remove("hidden");
       btn.setAttribute("aria-expanded", "true");
     } else {
-      closeFiltersPanel();
+      closeLangDropdown();
     }
   }
 
-  function updatePrintButton() {
-    const btn = $("#btn-print");
+  function toggleThemeDropdown(e) {
+    if (e) e.stopPropagation();
+    const menu = $("#theme-dd-menu");
+    const btn = $("#theme-dd-btn");
+    if (!menu || !btn) return;
+    const open = menu.classList.contains("hidden");
+    closeLangDropdown();
+    if (open) {
+      menu.classList.remove("hidden");
+      btn.setAttribute("aria-expanded", "true");
+    } else {
+      closeThemeDropdown();
+    }
+  }
+
+  function bindLongPress(el, { onShort, onLong, ms = 550 } = {}) {
+    if (!el) return;
+    let timer = null;
+    let firedLong = false;
+    const clear = () => {
+      if (timer != null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button != null && e.button !== 0) return;
+      firedLong = false;
+      clear();
+      timer = setTimeout(() => {
+        firedLong = true;
+        if (onLong) onLong(e);
+      }, ms);
+    });
+    el.addEventListener("pointerup", (e) => {
+      clear();
+      if (!firedLong && onShort) onShort(e);
+    });
+    el.addEventListener("pointerleave", clear);
+    el.addEventListener("pointercancel", clear);
+    el.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+
+  function bindSwipeCycle(el, { onCycle, onTap, threshold = 28 } = {}) {
+    if (!el) return;
+    let x0 = null;
+    let y0 = null;
+    let pid = null;
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button != null && e.button !== 0) return;
+      x0 = e.clientX;
+      y0 = e.clientY;
+      pid = e.pointerId;
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    });
+    const finish = (e) => {
+      if (x0 == null || (pid != null && e.pointerId !== pid)) return;
+      const dx = e.clientX - x0;
+      const dy = e.clientY - y0;
+      x0 = null;
+      y0 = null;
+      pid = null;
+      if (Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onCycle) onCycle(dx < 0 ? 1 : -1);
+        return;
+      }
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && onTap) onTap(e);
+    };
+    el.addEventListener("pointerup", finish);
+    el.addEventListener("pointercancel", () => {
+      x0 = null;
+      y0 = null;
+      pid = null;
+    });
+  }
+
+  function cycleLang(dir) {
+    const langs = ["en", "el"];
+    const i = Math.max(0, langs.indexOf(state.lang));
+    setLang(langs[(i + dir + langs.length) % langs.length]);
+  }
+
+  function cycleTheme(dir) {
+    const i = Math.max(0, THEMES.indexOf(state.theme));
+    setTheme(THEMES[(i + dir + THEMES.length) % THEMES.length]);
+  }
+
+  function applyToolbarLayout() {
+    document.body.classList.remove("toolbar-rail");
+    requestAnimationFrame(refreshHScrollFades);
+  }
+
+  function updateTogglesButton() {
+    const btn = $("#btn-event-toggles");
     if (!btn) return;
-    btn.classList.toggle("hidden", !state.printEnabled || state.view === "rails");
+    btn.classList.toggle("active", state.hideAllDay || state.hideMultiDay);
+  }
+
+  function updatePrintButton() {
+    const printItem = $("#share-dd-print");
+    if (printItem) printItem.classList.toggle("hidden", !state.printEnabled || state.view === "rails");
+  }
+
+  function siteShareUrl() {
+    return `${location.origin}${location.pathname}${location.search}`;
+  }
+
+  function closeShareDropdown() {
+    $("#share-dd-menu")?.classList.add("hidden");
+    $("#btn-share-site")?.setAttribute("aria-expanded", "false");
+  }
+
+  function openShareDropdown() {
+    const menu = $("#share-dd-menu");
+    const btn = $("#btn-share-site");
+    if (!menu || !btn) return;
+    const url = siteShareUrl();
+    const title = document.title || "Events";
+    const wa = menu.querySelector('[data-site-share="whatsapp"]');
+    const fb = menu.querySelector('[data-site-share="facebook"]');
+    const x = menu.querySelector('[data-site-share="x"]');
+    const mail = menu.querySelector('[data-site-share="mail"]');
+    if (wa) wa.href = `https://wa.me/?text=${encodeURIComponent(`${title}\n${url}`)}`;
+    if (fb) fb.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    if (x) x.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
+    if (mail) mail.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`;
+    const nativeBtn = menu.querySelector('[data-site-share="native"]');
+    if (nativeBtn) nativeBtn.classList.toggle("hidden", !navigator.share);
+    menu.classList.remove("hidden");
+    btn.setAttribute("aria-expanded", "true");
+  }
+
+  function toggleShareDropdown(e) {
+    if (e) e.stopPropagation();
+    closeLangDropdown();
+    closeThemeDropdown();
+    const menu = $("#share-dd-menu");
+    if (!menu) return;
+    if (menu.classList.contains("hidden")) openShareDropdown();
+    else closeShareDropdown();
+  }
+
+  async function shareSiteNative() {
+    const url = siteShareUrl();
+    const title = document.title || "Events";
+    if (!navigator.share) return false;
+    try {
+      await navigator.share({ title, url, text: title });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function onShareSiteClick(e) {
+    if (e) e.stopPropagation();
+    /* Mobile/desktop with Web Share: one-tap system sheet; else compact menu */
+    if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
+      const ok = await shareSiteNative();
+      if (ok) {
+        closeShareDropdown();
+        return;
+      }
+    }
+    toggleShareDropdown(e);
   }
 
   function firstEnabledView() {
-    return ALL_VIEWS.find((v) => state.enabledViews.has(v)) || "cards";
+    return ALL_VIEWS.find((v) => viewIsAvailable(v)) || "cards";
+  }
+
+  function firstEnabledBrowseView() {
+    return (
+      ["cards", "rails", "table", "posters", "calendar"].find((v) => viewIsAvailable(v)) ||
+      firstEnabledView()
+    );
+  }
+
+  function toggleTopView(name) {
+    if (!name) return;
+    if (name === "list") name = "cards";
+    if (state.view === name) {
+      setView(state.prevView || firstEnabledBrowseView());
+      return;
+    }
+    if (state.view !== "map" && state.view !== "starred") {
+      state.prevView = state.view;
+    }
+    setView(name);
   }
 
   function loadSettings() {
@@ -256,6 +412,13 @@
       if (typeof data.railsHorizon === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.railsHorizon)) {
         state.railsHorizon = data.railsHorizon;
       }
+      if (data.catMode === "and" || data.catMode === "or") state.catMode = data.catMode;
+      if (Array.isArray(data.hiddenViews)) {
+        state.hiddenViews = new Set(data.hiddenViews.filter((v) => ALL_VIEWS.includes(v)));
+      }
+      if (Array.isArray(data.hiddenFilters)) {
+        state.hiddenFilters = new Set(data.hiddenFilters.filter((v) => ALL_FILTERS.includes(v)));
+      }
     } catch (_) {
       /* ignore */
     }
@@ -270,6 +433,7 @@
           focusMonth: state.focusMonth,
           categories: [...state.categories],
           venues: [...state.venues],
+          catMode: state.catMode,
           search: state.search,
           dateFrom: state.dateFrom,
           dateTo: state.dateTo,
@@ -283,6 +447,8 @@
           calMode: state.calMode,
           railsLayout: state.railsLayout,
           railsHorizon: state.railsHorizon,
+          hiddenViews: [...state.hiddenViews],
+          hiddenFilters: [...state.hiddenFilters],
         })
       );
     } catch (_) {
@@ -321,25 +487,32 @@
 
   function syncLangButtons() {
     const flag = $("#lang-dd-flag");
-    if (flag) {
-      flag.src = state.lang === "el" ? "icons/flag-gr.svg" : "icons/flag-gb.svg";
+    if (flag) flag.src = LANG_FLAGS[state.lang] || LANG_FLAGS.en;
+    const btn = $("#lang-dd-btn");
+    if (btn) {
+      btn.title = state.lang === "el" ? "Ελληνικά" : "English";
+      btn.setAttribute("aria-label", btn.title);
     }
-    $$("#lang-dd-menu [data-lang]").forEach((btn) => {
-      const on = btn.dataset.lang === state.lang;
-      btn.classList.toggle("active", on);
-      btn.setAttribute("aria-selected", on ? "true" : "false");
+    $$("#lang-dd-menu [data-lang]").forEach((item) => {
+      item.classList.toggle("active", item.dataset.lang === state.lang);
     });
     document.documentElement.lang = state.lang === "el" ? "el" : "en";
   }
 
   function syncThemeUi() {
     document.documentElement.setAttribute("data-theme", state.theme);
-    const label = $("#theme-dd-label");
-    if (label) label.textContent = THEME_LABELS[state.theme] || "Theme";
-    $$("#theme-dd-menu [data-theme-choice]").forEach((btn) => {
-      const on = btn.dataset.themeChoice === state.theme;
-      btn.classList.toggle("active", on);
-      btn.setAttribute("aria-selected", on ? "true" : "false");
+    const icon = $("#theme-dd-icon");
+    if (icon) {
+      const path = THEME_ICON_PATHS[state.theme] || THEME_ICON_PATHS.system;
+      icon.innerHTML = `<path fill="currentColor" d="${path}"/>`;
+    }
+    const btn = $("#theme-dd-btn");
+    if (btn) {
+      btn.title = THEME_LABELS[state.theme] || "Theme";
+      btn.setAttribute("aria-label", btn.title);
+    }
+    $$("#theme-dd-menu [data-theme-choice]").forEach((item) => {
+      item.classList.toggle("active", item.dataset.themeChoice === state.theme);
     });
   }
 
@@ -348,6 +521,7 @@
     state.theme = theme;
     syncThemeUi();
     saveSettings();
+    closeThemeDropdown();
   }
 
   function setLang(lang) {
@@ -376,7 +550,7 @@
     $("#date-to").value = state.dateTo || "";
     $("#hide-allday").checked = state.hideAllDay;
     $("#hide-multiday").checked = state.hideMultiDay;
-    updateRangeBtn();
+    updateTogglesButton();
     applyCardsPerRow();
   }
 
@@ -387,34 +561,7 @@
   }
 
   function updateRangeBtn() {
-    const btn = $("#range-btn");
-    if (!btn) return;
-    const from = state.dateFrom;
-    const to = state.dateTo;
-    const today = todayISO();
-    const isFromToday = from === today && !to;
-    if (!from && !to) {
-      btn.textContent = "Any date";
-      btn.classList.remove("active");
-    } else if (isFromToday) {
-      btn.textContent = "From today";
-      btn.classList.remove("active");
-    } else {
-      const fmtShort = (iso) => {
-        const d = parseISO(iso);
-        return d ? d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) : iso;
-      };
-      const parts = [];
-      if (from) parts.push(fmtShort(from));
-      parts.push("–");
-      if (to) parts.push(fmtShort(to));
-      else parts.push("…");
-      btn.textContent = parts.join(" ");
-      btn.classList.add("active");
-    }
-    const todayBtn = $("#range-today");
-    if (todayBtn) todayBtn.disabled = isFromToday;
-    syncFiltersDdBtn();
+    /* date control lives in month picker */
   }
 
   function todayISO() {
@@ -566,7 +713,12 @@
     if (state.hideMultiDay && isMultiDay(ev)) return false;
     if (state.categories.size) {
       const cats = ev.category || [];
-      if (![...state.categories].some((c) => cats.includes(c))) return false;
+      const selected = [...state.categories];
+      const ok =
+        state.catMode === "and"
+          ? selected.every((c) => cats.includes(c))
+          : selected.some((c) => cats.includes(c));
+      if (!ok) return false;
     }
     if (state.venues.size && !state.venues.has(ev.location || "")) return false;
     if (state.view !== "starred" && (state.dateFrom || state.dateTo)) {
@@ -608,39 +760,58 @@
     if (!key || !/^\d{4}-\d{2}$/.test(key)) return;
     const changed = key !== state.focusMonth;
     state.focusMonth = key;
+    if (!fromCalendar) {
+      syncRangeToFocusMonth();
+      updateRangeBtn();
+    }
     if (changed) saveSettings();
     if (!fromCalendar && state.view === "calendar") {
       const today = todayISO();
       if (!state.agendaDay || state.agendaDay.slice(0, 7) !== key) {
         state.agendaDay = today.slice(0, 7) === key ? today : `${key}-01`;
       }
-      renderCustomCalendar();
     }
-    updateMonthNav();
-    if (state.view === "cards" || state.view === "table") renderList();
-    if (state.view === "posters") renderPosters();
     syncOpenPickersToFocusMonth();
+    if (fromCalendar) {
+      updateMonthNav();
+      return;
+    }
+    applyFilters();
+  }
+
+  function syncRangeToFocusMonth() {
+    const key = state.focusMonth;
+    if (!key || !/^\d{4}-\d{2}$/.test(key)) return;
+    const [y, m] = key.split("-").map(Number);
+    const first = `${key}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const last = `${key}-${String(lastDay).padStart(2, "0")}`;
+    const today = todayISO();
+    let from = first;
+    if (from < today && last >= today) from = today;
+    state.dateFrom = from;
+    state.dateTo = last;
+    const fromEl = $("#date-from");
+    const toEl = $("#date-to");
+    if (fromEl) fromEl.value = state.dateFrom;
+    if (toEl) toEl.value = state.dateTo;
   }
 
   function syncOpenPickersToFocusMonth() {
     const key = state.focusMonth;
     if (!key || !/^\d{4}-\d{2}$/.test(key)) return;
     const [y, m] = key.split("-").map(Number);
-    const monthPopup = $("#month-popup");
-    if (monthPopup && !monthPopup.classList.contains("hidden")) {
-      renderMonthPopup();
-    }
     const rangePopup = $("#range-popup");
     if (rangePopup && !rangePopup.classList.contains("hidden")) {
       rangeState.monthL = new Date(y, m - 1, 1);
-      renderRangePopup();
+      renderDatesPopup();
     }
   }
 
   function setView(name) {
     if (!name) return;
     if (name === "list") name = "cards";
-    if (!state.enabledViews.has(name)) name = firstEnabledView();
+    if (!viewIsAvailable(name)) name = firstEnabledView();
     state.view = name;
     const isBrowse = name === "cards" || name === "table";
     const isList = isBrowse || name === "starred";
@@ -659,18 +830,15 @@
     if (clearStars) clearStars.classList.toggle("hidden", name !== "starred");
     const dateFrom = $("#date-from");
     const dateTo = $("#date-to");
-    dateFrom.disabled = name === "starred";
-    dateTo.disabled = name === "starred";
-    const rangeBtn = $("#range-btn");
-    if (rangeBtn) rangeBtn.disabled = name === "starred";
-    const rangeToday = $("#range-today");
-    if (rangeToday) {
-      rangeToday.disabled = name === "starred" || (state.dateFrom === todayISO() && !state.dateTo);
-    }
+    if (dateFrom) dateFrom.disabled = name === "starred";
+    if (dateTo) dateTo.disabled = name === "starred";
     $$(".top .views > .view-btn").forEach((btn) => {
       const on = btn.dataset.view === name;
       btn.classList.toggle("active", on);
       btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    $$(".top-view-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.view === name);
     });
     syncViewsDropdown();
     closeViewsDropdown();
@@ -726,53 +894,54 @@
   }
 
   function updateCatButton() {
-    const btn = $("#cat-picker-btn");
+    const topBtn = $("#btn-cats");
     const n = state.categories.size;
-    btn.textContent = n ? `Categories (${n})` : "Categories";
-    btn.classList.toggle("active", n > 0);
-    syncFilterAllBtn("#cat-all", n);
-    syncFiltersDdBtn();
+    if (topBtn) topBtn.classList.toggle("active", n > 0);
+    syncCatModeButtons();
   }
 
   function updateLocButton() {
-    const btn = $("#loc-picker-btn");
-    if (!btn) return;
+    const topBtn = $("#btn-venues");
     const n = state.venues.size;
-    btn.textContent = n ? `Venues (${n})` : "Venues";
-    btn.classList.toggle("active", n > 0);
-    syncFilterAllBtn("#loc-all", n);
-    syncFiltersDdBtn();
+    if (topBtn) topBtn.classList.toggle("active", n > 0);
   }
 
-  function syncFiltersDdBtn() {
-    const filtersBtn = $("#filters-dd-btn");
-    if (!filtersBtn) return;
-    const active =
-      state.categories.size > 0 ||
-      state.venues.size > 0 ||
-      state.hideAllDay ||
-      state.hideMultiDay ||
-      (state.dateFrom && state.dateFrom !== todayISO()) ||
-      Boolean(state.dateTo);
-    filtersBtn.classList.toggle("active", active);
+  function syncCatModeButtons() {
+    $$("[data-cat-mode]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.catMode === state.catMode);
+    });
+  }
+
+  function countEventsWithCategory(cat) {
+    return state.events.filter((ev) => (ev.category || []).includes(cat)).length;
+  }
+
+  function countEventsAtVenue(loc) {
+    return state.events.filter((ev) => (ev.location || "") === loc).length;
+  }
+
+  function filterCheckLabels(hostSel, query) {
+    const q = (query || "").trim().toLowerCase();
+    $$(`${hostSel} label`).forEach((label) => {
+      const text = (label.textContent || "").toLowerCase();
+      label.classList.toggle("hidden", Boolean(q) && !text.includes(q));
+    });
   }
 
   function renderCategoryPicker() {
     const list = allCategories();
-    const btn = $("#cat-picker-btn");
     const host = $("#cat-checks");
-    const group = $(".cat-group");
+    if (!host) return;
     host.innerHTML = "";
     if (!list.length) {
-      btn.classList.add("hidden");
-      if (group) group.classList.add("hidden");
+      $("#btn-cats")?.classList.add("hidden");
       state.categories.clear();
       updateCatButton();
-      requestAnimationFrame(refreshHScrollFades);
       return;
     }
-    btn.classList.remove("hidden");
-    if (group) group.classList.remove("hidden");
+    if (!$("#btn-cats")?.classList.contains("ui-hidden")) {
+      $("#btn-cats")?.classList.remove("hidden");
+    }
     [...state.categories].forEach((c) => {
       if (!list.includes(c)) state.categories.delete(c);
     });
@@ -789,11 +958,11 @@
         applyFilters();
       });
       label.appendChild(input);
-      label.appendChild(document.createTextNode(cat));
+      label.appendChild(document.createTextNode(`${cat} (${countEventsWithCategory(cat)})`));
       host.appendChild(label);
     });
+    filterCheckLabels("#cat-checks", ($("#cat-search") || {}).value);
     updateCatButton();
-    requestAnimationFrame(refreshHScrollFades);
   }
 
   function allVenues() {
@@ -804,21 +973,18 @@
 
   function renderLocationFilter() {
     const list = allVenues();
-    const btn = $("#loc-picker-btn");
     const host = $("#loc-checks");
-    const group = $(".loc-group");
-    if (!btn || !host) return;
+    if (!host) return;
     host.innerHTML = "";
     if (list.length < 2) {
-      btn.classList.add("hidden");
-      if (group) group.classList.add("hidden");
+      $("#btn-venues")?.classList.add("hidden");
       state.venues.clear();
       updateLocButton();
-      requestAnimationFrame(refreshHScrollFades);
       return;
     }
-    btn.classList.remove("hidden");
-    if (group) group.classList.remove("hidden");
+    if (!$("#btn-venues")?.classList.contains("ui-hidden")) {
+      $("#btn-venues")?.classList.remove("hidden");
+    }
     [...state.venues].forEach((v) => {
       if (!list.includes(v)) state.venues.delete(v);
     });
@@ -835,11 +1001,25 @@
         applyFilters();
       });
       label.appendChild(input);
-      label.appendChild(document.createTextNode(loc));
+      label.appendChild(document.createTextNode(`${loc} (${countEventsAtVenue(loc)})`));
       host.appendChild(label);
     });
+    filterCheckLabels("#loc-checks", ($("#loc-search") || {}).value);
     updateLocButton();
-    requestAnimationFrame(refreshHScrollFades);
+  }
+
+  function toggleCategoryFilter(name, { closeDetailAfter = false } = {}) {
+    const cat = String(name || "").trim();
+    if (!cat) return;
+    if (state.categories.has(cat)) state.categories.delete(cat);
+    else state.categories.add(cat);
+    $$("#cat-checks input").forEach((input) => {
+      if (input.value === cat) input.checked = state.categories.has(cat);
+    });
+    updateCatButton();
+    saveSettings();
+    if (closeDetailAfter) closeDetail();
+    applyFilters();
   }
 
   function clearCategoryFilter() {
@@ -863,23 +1043,31 @@
   function closeFilterPopups() {
     $("#cat-popup")?.classList.add("hidden");
     $("#loc-popup")?.classList.add("hidden");
-    $("#cat-picker-btn")?.setAttribute("aria-expanded", "false");
-    $("#loc-picker-btn")?.setAttribute("aria-expanded", "false");
+    $("#toggles-popup")?.classList.add("hidden");
+    $("#btn-cats")?.setAttribute("aria-expanded", "false");
+    $("#btn-venues")?.setAttribute("aria-expanded", "false");
+    $("#btn-event-toggles")?.setAttribute("aria-expanded", "false");
     removeBackdrop();
   }
 
   function toggleFilterPopup(popupSel, btnSel, e) {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
+    closeActionDropdowns();
     const popup = $(popupSel);
     const btn = $(btnSel);
+    if (!popup) return;
     const wasOpen = !popup.classList.contains("hidden");
     $("#cat-popup")?.classList.add("hidden");
     $("#loc-popup")?.classList.add("hidden");
-    $("#cat-picker-btn")?.setAttribute("aria-expanded", "false");
-    $("#loc-picker-btn")?.setAttribute("aria-expanded", "false");
+    $("#toggles-popup")?.classList.add("hidden");
+    $("#btn-cats")?.setAttribute("aria-expanded", "false");
+    $("#btn-venues")?.setAttribute("aria-expanded", "false");
+    $("#btn-event-toggles")?.setAttribute("aria-expanded", "false");
     if (!wasOpen) {
+      if (popupSel === "#cat-popup") renderCategoryPicker();
+      if (popupSel === "#loc-popup") renderLocationFilter();
       popup.classList.remove("hidden");
-      btn.setAttribute("aria-expanded", "true");
+      if (btn) btn.setAttribute("aria-expanded", "true");
       addBackdrop(popup, closeFilterPopups);
     } else {
       closeFilterPopups();
@@ -912,16 +1100,33 @@
     $$(".hscroll-wrap").forEach(updateHScrollFade);
   }
 
+  function chipPreviewHtml(categories, limit = 3) {
+    const all = (categories || []).filter(Boolean);
+    if (!all.length) return "";
+    const selected = all.filter((c) => state.categories.has(c));
+    const rest = all.filter((c) => !state.categories.has(c));
+    const ordered = [...selected, ...rest];
+    const shown = ordered.slice(0, limit);
+    const extra = ordered.length - shown.length;
+    let html = shown
+      .map((c) => {
+        const on = state.categories.has(c) ? " active" : "";
+        return `<button type="button" class="chip${on}" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`;
+      })
+      .join("");
+    if (extra > 0) {
+      html += `<span class="chip chip-more" title="${escapeAttr(ordered.slice(limit).join(", "))}">+${extra}</span>`;
+    }
+    return html;
+  }
+
   function cardButton(ev) {
     const article = document.createElement("article");
     article.className = "event-card";
     article.tabIndex = 0;
     const thumb = imageUrl(ev, true) || imageUrl(ev, false);
     const full = imageUrl(ev, false) || thumb;
-    const cats = (ev.category || [])
-      .slice(0, 2)
-      .map((c) => `<span>${escapeHtml(c)}</span>`)
-      .join("");
+    const cats = chipPreviewHtml(ev.category || [], 3);
     const imgHtml = thumb
       ? `<img class="thumb-img" src="${escapeAttr(thumb)}" alt="" loading="lazy" data-full="${escapeAttr(full)}" />`
       : "";
@@ -934,6 +1139,13 @@
         <div class="card-chips">${cats}</div>
       </div>`;
     article.prepend(starButton(ev.id));
+    article.querySelectorAll(".card-chips [data-cat]").forEach((chip) => {
+      chip.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleCategoryFilter(chip.dataset.cat);
+      });
+    });
     article.addEventListener("click", () => openDetail(ev.id));
     article.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -1769,7 +1981,7 @@
     return L.divIcon({
       className: "",
       html: `<div class="leaflet-marker-photo" style="${
-        img ? `background-image:url('${escapeAttr(img)}')` : "background:#0f766e"
+        img ? `background-image:url('${escapeAttr(img)}')` : "background:#0a5c56"
       }"></div>`,
       iconSize: [44, 44],
       iconAnchor: [22, 22],
@@ -1994,9 +2206,14 @@
     (ev.category || []).forEach((c) => {
       const span = document.createElement("button");
       span.type = "button";
-      span.className = "chip active";
+      span.className = "chip" + (state.categories.has(c) ? " active" : "");
       span.textContent = c;
-      span.disabled = true;
+      span.dataset.cat = c;
+      span.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleCategoryFilter(c, { closeDetailAfter: true });
+      });
       cats.appendChild(span);
     });
     const notesEl = $("#detail-notes");
@@ -2588,31 +2805,91 @@
     if (host) host.innerHTML = "";
   });
 
-  /* ===== Month jump popup ===== */
+  /* ===== Dates popup (Month | Range tabs) ===== */
+  let rangeState = { picking: null, from: "", to: "", monthL: null };
+  let datesTab = "range";
+
   function openMonthPopup() {
-    const popup = $("#month-popup");
-    popup.classList.remove("hidden");
-    renderMonthPopup();
-    addBackdrop(popup, closeMonthPopup);
+    openDatesPopup("month");
   }
 
-  function closeMonthPopup() {
-    $("#month-popup").classList.add("hidden");
+  function openRangePopup() {
+    openDatesPopup("range");
+  }
+
+  function openDatesPopup(tab) {
+    datesTab = tab === "month" ? "month" : "range";
+    const popup = $("#range-popup");
+    popup.classList.remove("hidden");
+    rangeState.from = state.dateFrom;
+    rangeState.to = state.dateTo;
+    rangeState.picking = "from";
+    const seed =
+      (state.focusMonth && /^\d{4}-\d{2}$/.test(state.focusMonth) && state.focusMonth) ||
+      (rangeState.from && rangeState.from.slice(0, 7)) ||
+      monthKeyFromDate(new Date());
+    const [y, m] = seed.split("-").map(Number);
+    rangeState.monthL = new Date(y, m - 1, 1);
+    renderDatesPopup();
+    addBackdrop(popup, closeRangePopup);
+  }
+
+  function closeRangePopup() {
+    $("#range-popup").classList.add("hidden");
+    $("#month-popup")?.classList.add("hidden");
     removeBackdrop();
   }
 
-  function renderMonthPopup() {
-    const popup = $("#month-popup");
+  function closeMonthPopup() {
+    closeRangePopup();
+  }
+
+  function applyRange(from, to) {
+    state.dateFrom = from || "";
+    state.dateTo = to || "";
+    $("#date-from").value = state.dateFrom;
+    $("#date-to").value = state.dateTo;
+    updateRangeBtn();
+    if (from && /^\d{4}-\d{2}/.test(from)) {
+      state.focusMonth = from.slice(0, 7);
+    }
+    applyFilters();
+    closeRangePopup();
+  }
+
+  function renderDatesPopup() {
+    const popup = $("#range-popup");
+    if (!popup) return;
+    let html = '<div class="dates-tabs">';
+    html += '<div class="settings-choices settings-split dates-tab-btns">';
+    html += `<button type="button" data-dates-tab="month" class="${datesTab === "month" ? "active" : ""}">Month</button>`;
+    html += `<button type="button" data-dates-tab="range" class="${datesTab === "range" ? "active" : ""}">Range</button>`;
+    html += "</div>";
+    html += '<button type="button" class="month-popup-close dates-close" aria-label="Close">\u00d7</button>';
+    html += "</div>";
+    if (datesTab === "month") html += renderMonthTabHtml();
+    else html += renderRangeTabHtml();
+    popup.innerHTML = html;
+
+    popup.querySelector(".dates-close")?.addEventListener("click", closeRangePopup);
+    popup.querySelectorAll("[data-dates-tab]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        datesTab = btn.dataset.datesTab === "month" ? "month" : "range";
+        renderDatesPopup();
+      })
+    );
+    if (datesTab === "month") bindMonthTab(popup);
+    else bindRangeTab(popup);
+  }
+
+  function renderMonthTabHtml() {
     const cur = state.focusMonth || monthKeyFromDate(new Date());
     const [selY, selM] = cur.split("-").map(Number);
     const allKeys = new Set(state.events.map(monthKey).filter(Boolean));
     const yearSet = new Set([...allKeys].map((k) => Number(k.split("-")[0])));
     yearSet.add(new Date().getFullYear());
     const years = [...yearSet].sort();
-
-    let html = '<div class="month-popup-head"><span>Jump to month</span>';
-    html += '<button type="button" class="month-popup-close" aria-label="Close">\u00d7</button></div>';
-    html += '<div class="month-popup-grid"><div class="month-popup-years">';
+    let html = '<div class="month-popup-grid"><div class="month-popup-years">';
     years.forEach((y) => {
       const hasEvents = [...allKeys].some((k) => k.startsWith(`${y}-`));
       const cls = (y === selY ? "active" : "") + (hasEvents ? "" : " muted");
@@ -2632,10 +2909,13 @@
       html += `<button type="button" data-m="${m}" class="${(active + muted).trim()}"${dis}>${name}</button>`;
     });
     html += "</div></div>";
-    popup.innerHTML = html;
+    return html;
+  }
 
-    popup.querySelector(".month-popup-close").addEventListener("click", closeMonthPopup);
-
+  function bindMonthTab(popup) {
+    const cur = state.focusMonth || monthKeyFromDate(new Date());
+    const [selY, selM] = cur.split("-").map(Number);
+    const allKeys = new Set(state.events.map(monthKey).filter(Boolean));
     let pickY = selY;
     const updateMonths = () => {
       popup.querySelectorAll(".month-popup-months button").forEach((btn) => {
@@ -2659,61 +2939,20 @@
       btn.addEventListener("click", () => {
         if (btn.disabled) return;
         const m = Number(btn.dataset.m);
-        const key = `${pickY}-${String(m).padStart(2, "0")}`;
-        setFocusMonth(key);
-        closeMonthPopup();
+        setFocusMonth(`${pickY}-${String(m).padStart(2, "0")}`);
+        closeRangePopup();
       })
     );
   }
 
-  /* ===== Range picker popup ===== */
-  let rangeState = { picking: null, from: "", to: "", monthL: null };
-
-  function openRangePopup() {
-    const popup = $("#range-popup");
-    popup.classList.remove("hidden");
-    rangeState.from = state.dateFrom;
-    rangeState.to = state.dateTo;
-    rangeState.picking = "from";
-    const seed =
-      (state.focusMonth && /^\d{4}-\d{2}$/.test(state.focusMonth) && state.focusMonth) ||
-      (rangeState.from && rangeState.from.slice(0, 7)) ||
-      monthKeyFromDate(new Date());
-    const [y, m] = seed.split("-").map(Number);
-    rangeState.monthL = new Date(y, m - 1, 1);
-    renderRangePopup();
-    addBackdrop(popup, closeRangePopup);
-  }
-
-  function closeRangePopup() {
-    $("#range-popup").classList.add("hidden");
-    removeBackdrop();
-    syncFiltersDdBtn();
-  }
-
-  function applyRange(from, to) {
-    state.dateFrom = from || "";
-    state.dateTo = to || "";
-    $("#date-from").value = state.dateFrom;
-    $("#date-to").value = state.dateTo;
-    updateRangeBtn();
-    if (from && /^\d{4}-\d{2}/.test(from)) {
-      state.focusMonth = from.slice(0, 7);
-    }
-    applyFilters();
-    closeRangePopup();
-  }
-
-  function renderRangePopup() {
-    const popup = $("#range-popup");
+  function renderRangeTabHtml() {
     const today = todayISO();
     const now = new Date();
-    const dayOfWeek = now.getDay() || 7; // Mon=1 … Sun=7
+    const dayOfWeek = now.getDay() || 7;
     const weekStart = addDays(now, 1 - dayOfWeek);
     const weekEnd = addDays(weekStart, 6);
     const y = now.getFullYear();
     const m = now.getMonth();
-
     let html = '<div class="range-presets">';
     html += `<button type="button" data-preset="today">From today</button>`;
     html += `<button type="button" data-preset="week">This week</button>`;
@@ -2729,13 +2968,21 @@
     html += '<button type="button" class="btn ghost" data-cancel>Cancel</button>';
     html += '<button type="button" class="btn primary" data-ok>OK</button>';
     html += "</div>";
-    popup.innerHTML = html;
+    return html;
+  }
 
-    popup.querySelector("[data-cancel]").addEventListener("click", closeRangePopup);
-    popup.querySelector("[data-ok]").addEventListener("click", () => {
+  function bindRangeTab(popup) {
+    const today = todayISO();
+    const now = new Date();
+    const dayOfWeek = now.getDay() || 7;
+    const weekStart = addDays(now, 1 - dayOfWeek);
+    const weekEnd = addDays(weekStart, 6);
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    popup.querySelector("[data-cancel]")?.addEventListener("click", closeRangePopup);
+    popup.querySelector("[data-ok]")?.addEventListener("click", () => {
       applyRange(rangeState.from || "", rangeState.to || "");
     });
-
     popup.querySelectorAll("[data-preset]").forEach((btn) =>
       btn.addEventListener("click", () => {
         const p = btn.dataset.preset;
@@ -2748,7 +2995,6 @@
         }
       })
     );
-
     popup.querySelectorAll(".range-cal-head button").forEach((btn) =>
       btn.addEventListener("click", () => {
         const d = Number(btn.dataset.dir);
@@ -2757,10 +3003,9 @@
           rangeState.monthL.getMonth() + d,
           1
         );
-        renderRangePopup();
+        renderDatesPopup();
       })
     );
-
     popup.querySelectorAll(".range-cal-grid .day:not(.other)").forEach((el) =>
       el.addEventListener("click", () => {
         const iso = el.dataset.date;
@@ -2768,7 +3013,7 @@
           rangeState.from = iso;
           rangeState.to = "";
           rangeState.picking = "to";
-          renderRangePopup();
+          renderDatesPopup();
         } else {
           if (iso < rangeState.from) {
             rangeState.to = rangeState.from;
@@ -2777,10 +3022,14 @@
             rangeState.to = iso;
           }
           rangeState.picking = "from";
-          renderRangePopup();
+          renderDatesPopup();
         }
       })
     );
+  }
+
+  function renderRangePopup() {
+    renderDatesPopup();
   }
 
   function renderRangeMonth(d) {
@@ -2830,6 +3079,8 @@
 
   /* ===== Settings popup ===== */
   function openSettingsPopup() {
+    closeActionDropdowns();
+    closeFilterPopups();
     const popup = $("#settings-popup");
     popup.classList.remove("hidden");
     renderSettingsPopup();
@@ -2851,17 +3102,20 @@
       html += `<button type="button" data-cols="${n}" class="${active.trim()}">${n}</button>`;
     });
     html += "</div></div>";
-    html += '<div class="settings-row"><label>Small screen</label><div class="settings-choices">';
-    [
-      [true, "Group"],
-      [false, "Rail"],
-    ].forEach(([grouped, label]) => {
-      const active = state.groupToolbar === grouped ? " active" : "";
-      html += `<button type="button" data-group-toolbar="${grouped}" class="${active.trim()}">${label}</button>`;
+    html += '<div class="settings-duo">';
+    html += '<div class="settings-row settings-block"><label>Views</label><div class="settings-toggles">';
+    ALL_VIEWS.forEach((view) => {
+      if (!state.enabledViews.has(view)) return;
+      const checked = !state.hiddenViews.has(view) ? " checked" : "";
+      html += `<label><input type="checkbox" data-show-view="${view}"${checked} /> ${VIEW_LABELS[view] || view}</label>`;
     });
     html += "</div></div>";
-    html +=
-      '<p class="settings-hint muted">Group = Views/Filters menus.\nRail = scrollable bars.</p>';
+    html += '<div class="settings-row settings-block"><label>Filters</label><div class="settings-toggles">';
+    ALL_FILTERS.forEach((key) => {
+      const checked = !state.hiddenFilters.has(key) ? " checked" : "";
+      html += `<label><input type="checkbox" data-show-filter="${key}"${checked} /> ${FILTER_LABELS[key] || key}</label>`;
+    });
+    html += "</div></div></div>";
     if (state.deferredInstall) {
       html += '<div class="settings-row"><button type="button" class="btn primary" data-install>Install app</button></div>';
     } else if (isIos() && !isStandalone()) {
@@ -2879,13 +3133,24 @@
         btn.classList.add("active");
       })
     );
-    popup.querySelectorAll("[data-group-toolbar]").forEach((btn) =>
-      btn.addEventListener("click", () => {
-        state.groupToolbar = btn.dataset.groupToolbar === "true";
-        applyToolbarLayout();
+    popup.querySelectorAll("[data-show-view]").forEach((input) =>
+      input.addEventListener("change", () => {
+        const view = input.dataset.showView;
+        if (input.checked) state.hiddenViews.delete(view);
+        else state.hiddenViews.add(view);
+        if (!viewIsAvailable(state.view)) state.view = firstEnabledView();
+        applyViewConfig();
+        setView(state.view);
         saveSettings();
-        popup.querySelectorAll("[data-group-toolbar]").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
+      })
+    );
+    popup.querySelectorAll("[data-show-filter]").forEach((input) =>
+      input.addEventListener("change", () => {
+        const key = input.dataset.showFilter;
+        if (input.checked) state.hiddenFilters.delete(key);
+        else state.hiddenFilters.add(key);
+        applyFilterVisibility();
+        saveSettings();
       })
     );
     const installBtn = popup.querySelector("[data-install]");
@@ -2959,46 +3224,77 @@
     $$(".top .views > .view-btn").forEach((btn) =>
       btn.addEventListener("click", () => setView(btn.dataset.view))
     );
-    $("#views-dd-btn").addEventListener("click", toggleViewsDropdown);
-    $$("#views-dd-menu [data-view]").forEach((btn) =>
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        setView(btn.dataset.view);
-      })
+    $$(".top-view-btn").forEach((btn) =>
+      btn.addEventListener("click", () => toggleTopView(btn.dataset.view))
     );
-    $("#lang-dd-btn")?.addEventListener("click", toggleLangDropdown);
+    bindLongPress($("#btn-cats"), {
+      onShort: (e) => toggleFilterPopup("#cat-popup", "#btn-cats", e),
+      onLong: () => {
+        clearCategoryFilter();
+        saveSettings();
+      },
+    });
+    bindLongPress($("#btn-venues"), {
+      onShort: (e) => toggleFilterPopup("#loc-popup", "#btn-venues", e),
+      onLong: () => {
+        clearLocationFilter();
+        saveSettings();
+      },
+    });
+    $("#btn-event-toggles")?.addEventListener("click", (e) =>
+      toggleFilterPopup("#toggles-popup", "#btn-event-toggles", e)
+    );
+    bindSwipeCycle($("#lang-dd-btn"), {
+      onCycle: cycleLang,
+      onTap: toggleLangDropdown,
+    });
+    bindSwipeCycle($("#theme-dd-btn"), {
+      onCycle: cycleTheme,
+      onTap: toggleThemeDropdown,
+    });
     $$("#lang-dd-menu [data-lang]").forEach((btn) =>
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         setLang(btn.dataset.lang);
       })
     );
-    $("#theme-dd-btn")?.addEventListener("click", toggleThemeDropdown);
     $$("#theme-dd-menu [data-theme-choice]").forEach((btn) =>
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         setTheme(btn.dataset.themeChoice);
-        closeThemeDropdown();
       })
     );
-    $("#filters-dd-btn").addEventListener("click", toggleFiltersPanel);
     document.addEventListener("click", (e) => {
-      if (!e.target.closest("#views-dd")) closeViewsDropdown();
       if (!e.target.closest("#lang-dd")) closeLangDropdown();
       if (!e.target.closest("#theme-dd")) closeThemeDropdown();
-      if (
-        useGroupedToolbar() &&
-        $("#filters-wrap")?.classList.contains("is-open") &&
-        !e.target.closest("#filters-wrap") &&
-        !e.target.closest("#filters-dd-btn") &&
-        !e.target.closest(".filter-popup") &&
-        !e.target.closest("#range-popup") &&
-        !e.target.closest(".popup-backdrop")
-      ) {
-        closeFiltersPanel();
+      if (!e.target.closest("#share-dd")) closeShareDropdown();
+    });
+    $("#btn-share-site")?.addEventListener("click", onShareSiteClick);
+    $("#share-dd-menu")?.addEventListener("click", async (e) => {
+      const item = e.target.closest("[data-site-share]");
+      if (!item) return;
+      e.stopPropagation();
+      const kind = item.dataset.siteShare;
+      if (kind === "native") {
+        await shareSiteNative();
+        closeShareDropdown();
+      } else if (kind === "copy") {
+        try {
+          await navigator.clipboard.writeText(siteShareUrl());
+          item.textContent = "Copied";
+          setTimeout(() => {
+            item.textContent = "Copy link";
+          }, 1200);
+        } catch (_) {
+          prompt("Copy this link", siteShareUrl());
+        }
+      } else if (kind === "print") {
+        closeShareDropdown();
+        printPage();
+      } else {
+        closeShareDropdown();
       }
     });
-    $("#btn-print").addEventListener("click", printPage);
     $("#btn-settings").addEventListener("click", (e) => {
       e.stopPropagation();
       openSettingsPopup();
@@ -3037,53 +3333,71 @@
       railsScroll.addEventListener("scroll", onRailsScroll, { passive: true });
     }
     $("#stars-clear").addEventListener("click", clearAllStars);
-    $("#range-btn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      openRangePopup();
-    });
-    $("#range-today").addEventListener("click", () => applyRange(todayISO(), ""));
     $("#search").addEventListener("input", (e) => {
       state.search = (e.target.value || "").trim().toLowerCase();
       applyFilters();
     });
-    $("#date-from").addEventListener("change", (e) => {
+    $("#search-clear")?.addEventListener("click", () => {
+      const input = $("#search");
+      if (input) input.value = "";
+      state.search = "";
+      applyFilters();
+    });
+    $("#date-from")?.addEventListener("change", (e) => {
       state.dateFrom = e.target.value || "";
-      updateRangeBtn();
       applyFilters();
     });
-    $("#date-to").addEventListener("change", (e) => {
+    $("#date-to")?.addEventListener("change", (e) => {
       state.dateTo = e.target.value || "";
-      updateRangeBtn();
       applyFilters();
     });
-    $("#loc-all").addEventListener("click", clearLocationFilter);
-    $("#cat-all").addEventListener("click", clearCategoryFilter);
+    $("#loc-all")?.addEventListener("click", clearLocationFilter);
+    $("#cat-all")?.addEventListener("click", clearCategoryFilter);
     $("#hide-allday").addEventListener("change", (e) => {
       state.hideAllDay = e.target.checked;
-      syncFiltersDdBtn();
+      updateTogglesButton();
+      saveSettings();
       applyFilters();
     });
     $("#hide-multiday").addEventListener("change", (e) => {
       state.hideMultiDay = e.target.checked;
-      syncFiltersDdBtn();
+      updateTogglesButton();
+      saveSettings();
       applyFilters();
     });
-    $("#cat-picker-btn").addEventListener("click", (e) =>
-      toggleFilterPopup("#cat-popup", "#cat-picker-btn", e)
-    );
-    $("#loc-picker-btn").addEventListener("click", (e) =>
-      toggleFilterPopup("#loc-popup", "#loc-picker-btn", e)
-    );
     $("#cat-done").addEventListener("click", closeFilterPopups);
     $("#loc-done").addEventListener("click", closeFilterPopups);
+    $("#toggles-done")?.addEventListener("click", closeFilterPopups);
     $("#cat-clear").addEventListener("click", clearCategoryFilter);
     $("#loc-clear").addEventListener("click", clearLocationFilter);
+    $("#cat-search")?.addEventListener("input", (e) => {
+      filterCheckLabels("#cat-checks", e.target.value);
+    });
+    $("#loc-search")?.addEventListener("input", (e) => {
+      filterCheckLabels("#loc-checks", e.target.value);
+    });
+    $("#cat-search-clear")?.addEventListener("click", () => {
+      const input = $("#cat-search");
+      if (input) input.value = "";
+      filterCheckLabels("#cat-checks", "");
+    });
+    $("#loc-search-clear")?.addEventListener("click", () => {
+      const input = $("#loc-search");
+      if (input) input.value = "";
+      filterCheckLabels("#loc-checks", "");
+    });
+    $$("[data-cat-mode]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        state.catMode = btn.dataset.catMode === "and" ? "and" : "or";
+        syncCatModeButtons();
+        saveSettings();
+        applyFilters();
+      })
+    );
     $$(".filter-popup").forEach((popup) =>
       popup.addEventListener("click", (e) => e.stopPropagation())
     );
-    $("#filters-wrap").addEventListener("click", (e) => e.stopPropagation());
     bindHScroll($(".views-wrap"));
-    bindHScroll($(".filters-wrap"));
     /* filters rail uses thin scrollbar; grouped mode uses sheet */
     $("#detail-hero").addEventListener("click", () => {
       if (state.heroSrc) openLightbox(state.heroSrc, state.selected?.title || "");
@@ -3129,13 +3443,11 @@
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         if ([...$$(".cal-menu")].some((m) => !m.classList.contains("hidden"))) closeCalMenus();
-        else if (!$("#views-dd-menu").classList.contains("hidden")) closeViewsDropdown();
         else if ($("#lang-dd-menu") && !$("#lang-dd-menu").classList.contains("hidden")) closeLangDropdown();
         else if ($("#theme-dd-menu") && !$("#theme-dd-menu").classList.contains("hidden")) closeThemeDropdown();
+        else if ($("#share-dd-menu") && !$("#share-dd-menu").classList.contains("hidden")) closeShareDropdown();
         else if (![...$$(".filter-popup")].every((p) => p.classList.contains("hidden"))) closeFilterPopups();
-        else if ($("#filters-wrap")?.classList.contains("is-open")) closeFiltersPanel();
         else if (!$("#settings-popup").classList.contains("hidden")) closeSettingsPopup();
-        else if (!$("#month-popup").classList.contains("hidden")) closeMonthPopup();
         else if (!$("#range-popup").classList.contains("hidden")) closeRangePopup();
         else if (!$("#lightbox").classList.contains("hidden")) closeLightbox();
         else if (!$("#about").classList.contains("hidden")) $("#about").classList.add("hidden");
@@ -3162,9 +3474,13 @@
     state.printEnabled = parsePrintEnabled();
     loadSettings();
     syncThemeUi();
+    syncLangButtons();
     ensureRailsHorizon();
     const today = todayISO();
-    if (!state.dateFrom || state.dateFrom < today) state.dateFrom = today;
+    /* Always open on "from today" — don't restore a stale saved range/month as the landing window */
+    state.dateFrom = today;
+    state.dateTo = "";
+    state.focusMonth = monthKeyFromDate(new Date());
     if (!state.enabledViews.has(state.view)) state.view = firstEnabledView();
     applyViewConfig();
     applyToolbarLayout();

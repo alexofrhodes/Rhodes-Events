@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0f766e" />
+  <meta name="theme-color" content="#0a5c56" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Events" />
@@ -48,60 +48,87 @@
           <time id="clock-now" class="clock-now" datetime=""></time>
         </div>
       </div>
-      <div class="views-dd" id="views-dd">
-        <button type="button" id="views-dd-btn" class="views-dd-btn" aria-haspopup="listbox" aria-expanded="false">
-          <span id="views-dd-label">Cards</span>
-          <span class="views-dd-caret" aria-hidden="true">▾</span>
-        </button>
-        <div id="views-dd-menu" class="views-dd-menu hidden" role="listbox" aria-label="Views">
-          <button type="button" role="option" data-view="cards">Cards</button>
-          <button type="button" role="option" data-view="rails">Rails</button>
-          <button type="button" role="option" data-view="table">Table</button>
-          <button type="button" role="option" data-view="posters">Posters</button>
-          <button type="button" role="option" data-view="calendar">Calendar</button>
-          <button type="button" role="option" data-view="map">Map</button>
-          <button type="button" role="option" data-view="starred">Starred</button>
-        </div>
-      </div>
-      <button type="button" id="filters-dd-btn" class="filters-dd-btn" aria-haspopup="true" aria-expanded="false" aria-controls="filters-wrap">
-        Filters
-      </button>
-      <div class="top-actions">
+      <div class="title-bar-actions">
         <div class="action-dd" id="lang-dd">
-          <button type="button" id="lang-dd-btn" class="action-dd-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Language">
+          <button type="button" id="lang-dd-btn" class="icon-btn circle-btn action-dd-btn" aria-label="Language" title="Language · swipe to switch" aria-haspopup="true" aria-expanded="false">
             <img id="lang-dd-flag" class="lang-flag" src="icons/flag-gb.svg" alt="" width="20" height="15" decoding="async" />
-            <span class="views-dd-caret" aria-hidden="true">▾</span>
           </button>
-          <div id="lang-dd-menu" class="views-dd-menu hidden" role="listbox" aria-label="Language">
-            <button type="button" role="option" data-lang="en" class="lang-dd-opt">
+          <div id="lang-dd-menu" class="views-dd-menu action-dd-menu hidden" role="menu">
+            <button type="button" role="menuitem" data-lang="en" class="lang-dd-opt">
               <img class="lang-flag" src="icons/flag-gb.svg" alt="" width="20" height="15" decoding="async" />
-              English
+              <span>English</span>
             </button>
-            <button type="button" role="option" data-lang="el" class="lang-dd-opt">
+            <button type="button" role="menuitem" data-lang="el" class="lang-dd-opt">
               <img class="lang-flag" src="icons/flag-gr.svg" alt="" width="20" height="15" decoding="async" />
-              Ελληνικά
+              <span>Ελληνικά</span>
             </button>
           </div>
         </div>
         <div class="action-dd" id="theme-dd">
-          <button type="button" id="theme-dd-btn" class="action-dd-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Theme">
-            <span id="theme-dd-label">Theme</span>
-            <span class="views-dd-caret" aria-hidden="true">▾</span>
+          <button type="button" id="theme-dd-btn" class="icon-btn circle-btn action-dd-btn" aria-label="Theme" title="Theme · swipe to switch" aria-haspopup="true" aria-expanded="false">
+            <svg id="theme-dd-icon" class="icon-svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"></svg>
           </button>
-          <div id="theme-dd-menu" class="views-dd-menu hidden" role="listbox" aria-label="Theme">
-            <button type="button" role="option" data-theme-choice="light">Light</button>
-            <button type="button" role="option" data-theme-choice="dark">Dark</button>
-            <button type="button" role="option" data-theme-choice="system">System</button>
+          <div id="theme-dd-menu" class="views-dd-menu action-dd-menu hidden" role="menu">
+            <button type="button" role="menuitem" data-theme-choice="light">Light</button>
+            <button type="button" role="menuitem" data-theme-choice="dark">Dark</button>
+            <button type="button" role="menuitem" data-theme-choice="system">System</button>
           </div>
         </div>
-        <button type="button" id="btn-install" class="icon-btn hidden" aria-label="Install app" title="Install app">↓</button>
-        <button type="button" id="btn-print" class="icon-btn" aria-label="Print" title="Print">⎙</button>
-        <button type="button" id="btn-settings" class="icon-btn" aria-label="Settings" title="Settings">
+        <div class="action-dd" id="share-dd">
+          <button type="button" id="btn-share-site" class="icon-btn circle-btn action-dd-btn" aria-label="Share" title="Share" aria-haspopup="true" aria-expanded="false">
+            <svg class="icon-svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+            </svg>
+          </button>
+          <div id="share-dd-menu" class="views-dd-menu action-dd-menu share-dd-menu hidden" role="menu">
+            <button type="button" role="menuitem" data-site-share="native">Share…</button>
+            <button type="button" role="menuitem" data-site-share="copy">Copy link</button>
+            <a role="menuitem" data-site-share="whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+            <a role="menuitem" data-site-share="facebook" target="_blank" rel="noopener">Facebook</a>
+            <a role="menuitem" data-site-share="x" target="_blank" rel="noopener">X</a>
+            <a role="menuitem" data-site-share="mail">Mail</a>
+            <button type="button" role="menuitem" id="share-dd-print" data-site-share="print">Print</button>
+          </div>
+        </div>
+        <button type="button" id="btn-settings" class="icon-btn circle-btn" aria-label="Settings" title="Settings">
           <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.07 7.07 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.22-1.13.53-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.08a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.83 14.76a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.68.24l2.39-.96c.5.41 1.05.73 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.58-.22 1.13-.53 1.63-.94l2.39.96c.25.1.54 0 .68-.24l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
           </svg>
         </button>
-        <button type="button" id="btn-about" class="icon-btn" aria-label="About" title="About">?</button>
+        <button type="button" id="btn-about" class="icon-btn circle-btn" aria-label="About" title="About">?</button>
+      </div>
+      <div class="top-actions">
+        <div class="search-wrap" data-filter="search">
+          <span class="sr-only">Search</span>
+          <input id="search" type="search" placeholder="Search…" autocomplete="off" />
+          <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" title="Clear">×</button>
+        </div>
+        <button type="button" id="btn-event-toggles" class="icon-btn" data-filter="toggles" aria-label="Event visibility" title="Hide all-day / multi-day" aria-haspopup="true" aria-expanded="false">
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M12 5c-5 0-9.27 3.11-11 7 1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
+          </svg>
+        </button>
+        <button type="button" id="btn-venues" class="icon-btn" aria-label="Venues" title="Venues · long-press to clear" aria-haspopup="true" aria-expanded="false">
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M12 3 4 9v12h5v-6h6v6h5V9l-8-6zm0 2.2 6 4.5V19h-2v-6H8v6H6v-9.3l6-4.5z"/>
+          </svg>
+        </button>
+        <button type="button" id="btn-cats" class="icon-btn" aria-label="Categories" title="Categories · long-press to clear" aria-haspopup="true" aria-expanded="false">
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M21.41 11.58l-9-9A2 2 0 0 0 11 2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 .59 1.41l9 9a2 2 0 0 0 2.82 0l7-7a2 2 0 0 0 0-2.83zM5.5 7A1.5 1.5 0 1 1 7 5.5 1.5 1.5 0 0 1 5.5 7z"/>
+          </svg>
+        </button>
+        <button type="button" id="btn-view-map" class="icon-btn top-view-btn" data-view="map" aria-label="Map" title="Map">
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/>
+          </svg>
+        </button>
+        <button type="button" id="btn-view-starred" class="icon-btn top-view-btn" data-view="starred" aria-label="Starred" title="Starred">
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+          </svg>
+        </button>
+        <button type="button" id="btn-install" class="icon-btn hidden" aria-label="Install app" title="Install app">↓</button>
       </div>
     </div>
     <div class="hscroll-wrap views-wrap" id="views-wrap">
@@ -112,37 +139,11 @@
         <button type="button" class="view-btn" data-view="table" aria-selected="false">Table</button>
         <button type="button" class="view-btn" data-view="posters" aria-selected="false">Posters</button>
         <button type="button" class="view-btn" data-view="calendar" aria-selected="false">Calendar</button>
-        <button type="button" class="view-btn" data-view="map" aria-selected="false">Map</button>
-        <button type="button" class="view-btn" data-view="starred" aria-selected="false">Starred</button>
       </div>
       <div class="hscroll-fade hscroll-fade-end hidden" data-hscroll-fade="end" aria-hidden="true"></div>
     </div>
-    <div class="hscroll-wrap filters-wrap" id="filters-wrap">
-      <div class="filters hscroll" id="filters">
-        <label class="search-wrap">
-          <span class="sr-only">Search</span>
-          <input id="search" type="search" placeholder="Search…" autocomplete="off" />
-        </label>
-        <div class="range-group">
-          <button type="button" id="range-btn" class="range-pick-btn" aria-label="Pick date range">From today</button>
-          <button type="button" id="range-today" class="range-today-btn" title="From today" disabled>Today</button>
-          <input id="date-from" type="hidden" aria-label="From date" />
-          <input id="date-to" type="hidden" aria-label="To date" />
-        </div>
-        <div class="filter-group cat-group">
-          <button type="button" id="cat-picker-btn" class="filter-pick-btn hidden" aria-haspopup="true" aria-expanded="false">Categories</button>
-          <button type="button" id="cat-all" class="filter-all-btn" title="All categories" disabled>All</button>
-        </div>
-        <div class="filter-group loc-group">
-          <button type="button" id="loc-picker-btn" class="filter-pick-btn hidden" aria-haspopup="true" aria-expanded="false">Venues</button>
-          <button type="button" id="loc-all" class="filter-all-btn" title="All venues" disabled>All</button>
-        </div>
-        <div class="event-toggles">
-          <label><input type="checkbox" id="hide-allday" /> Hide all-day</label>
-          <label><input type="checkbox" id="hide-multiday" /> Hide multi-day</label>
-        </div>
-      </div>
-    </div>
+    <input id="date-from" type="hidden" aria-label="From date" />
+    <input id="date-to" type="hidden" aria-label="To date" />
     <div class="section-head month-nav-head" id="month-nav">
       <div class="month-nav-center">
         <button type="button" id="month-prev" class="icon-btn" aria-label="Previous month">‹</button>
@@ -158,6 +159,17 @@
 
   <div id="cat-popup" class="filter-popup hidden" role="dialog" aria-label="Categories">
     <div class="filter-popup-head"><span>Categories</span></div>
+    <div class="filter-popup-tools">
+      <label class="filter-search-wrap">
+        <span class="sr-only">Search categories</span>
+        <input id="cat-search" type="search" placeholder="Search…" autocomplete="off" />
+        <button type="button" id="cat-search-clear" class="filter-search-clear" aria-label="Clear search" title="Clear">×</button>
+      </label>
+      <div class="filter-mode" role="group" aria-label="Match mode">
+        <button type="button" id="cat-mode-or" class="filter-mode-btn active" data-cat-mode="or">OR</button>
+        <button type="button" id="cat-mode-and" class="filter-mode-btn" data-cat-mode="and">AND</button>
+      </div>
+    </div>
     <div id="cat-checks" class="filter-checks"></div>
     <div class="filter-popup-actions">
       <button type="button" id="cat-clear" class="btn ghost">Clear</button>
@@ -166,10 +178,27 @@
   </div>
   <div id="loc-popup" class="filter-popup hidden" role="dialog" aria-label="Venues">
     <div class="filter-popup-head"><span>Venues</span></div>
+    <div class="filter-popup-tools">
+      <label class="filter-search-wrap">
+        <span class="sr-only">Search venues</span>
+        <input id="loc-search" type="search" placeholder="Search…" autocomplete="off" />
+        <button type="button" id="loc-search-clear" class="filter-search-clear" aria-label="Clear search" title="Clear">×</button>
+      </label>
+    </div>
     <div id="loc-checks" class="filter-checks"></div>
     <div class="filter-popup-actions">
       <button type="button" id="loc-clear" class="btn ghost">Clear</button>
       <button type="button" id="loc-done" class="btn primary">Done</button>
+    </div>
+  </div>
+  <div id="toggles-popup" class="filter-popup toggles-popup hidden" role="dialog" aria-label="Event visibility">
+    <div class="filter-popup-head"><span>Visibility</span></div>
+    <div class="event-toggles event-toggles-popup">
+      <label><input type="checkbox" id="hide-allday" /> Hide all-day</label>
+      <label><input type="checkbox" id="hide-multiday" /> Hide multi-day</label>
+    </div>
+    <div class="filter-popup-actions">
+      <button type="button" id="toggles-done" class="btn primary">Done</button>
     </div>
   </div>
 

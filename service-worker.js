@@ -1,5 +1,5 @@
 /* PWA: precache app shell; network-first so republish updates show. */
-const SHELL = "events-shell-v25";
+const SHELL = "events-shell-v35";
 const SHELL_URLS = [
   "./",
   "index.html",
