@@ -112,21 +112,86 @@ body {
   border-bottom: 1px solid var(--line);
   padding: 0.15rem 0.4rem 0.2rem;
   overflow: visible;
+  container-type: inline-size;
+  container-name: topbar;
 }
 
 .top-inner {
   max-width: 1100px;
   margin: 0 auto;
   display: flex;
-  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.3rem 0.5rem;
+  gap: 0.5rem;
   overflow: visible;
 }
 
-.top-inner > .brand { flex: 1 1 auto; min-width: 0; }
-.top-inner > .title-bar-actions { flex: 0 0 auto; margin-left: auto; }
-.top-inner > .top-actions { flex: 1 1 100%; min-width: 0; }
+.top-inner > .brand {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.top-inner > .title-bar-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/*
+  Toolbar row:
+  - Tools (search+icons) always present, right-aligned
+  - Views share that row on the left when width allows
+  - Else views drop to own row, centered
+  Search: compact beside icons when sharing; grows to fill tools row when alone
+*/
+.top-toolbar {
+  max-width: 1100px;
+  margin: 0.3rem auto 0.45rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "tools"
+    "views";
+  align-items: center;
+  column-gap: 0.65rem;
+  row-gap: 0.35rem;
+}
+
+.top-toolbar > .top-actions {
+  grid-area: tools;
+  justify-self: end;
+  width: 100%;
+  max-width: 100%;
+  justify-content: flex-end;
+}
+
+.top-toolbar > .views-wrap {
+  grid-area: views;
+  justify-self: center;
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+}
+
+@container topbar (min-width: 720px) {
+  .top-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "views tools";
+  }
+
+  .top-toolbar > .views-wrap {
+    justify-self: start;
+  }
+
+  .top-toolbar > .top-actions {
+    width: auto;
+  }
+
+  /* Compact search so views keep room on the shared row */
+  .top-toolbar .search-wrap {
+    flex: 0 1 10rem;
+    width: 9.5rem;
+    max-width: 12rem;
+  }
+}
 
 .brand {
   display: flex;
@@ -200,10 +265,13 @@ body {
 }
 
 .action-dd-btn.icon-btn {
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
   padding: 0;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 .views-dd-caret {
@@ -314,8 +382,10 @@ body {
 }
 
 .views-wrap {
-  max-width: 1100px;
-  margin: 0.2rem auto 0;
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+  margin: 0;
 }
 
 .views {
@@ -332,48 +402,9 @@ body {
   flex: 0 0 auto;
 }
 
-/* Narrow: brand + title actions on first row; tools below; views scroll */
-@media (max-width: 639px) {
-  body .top-inner {
-    flex-wrap: wrap;
-  }
-
-  body .top-inner > .brand {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  body .top-inner > .title-bar-actions {
-    flex: 0 0 auto;
-    margin-left: auto;
-  }
-
-  body .top-inner > .top-actions {
-    flex: 1 1 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-  }
-
-  body .views-wrap {
-    display: block;
-  }
-
-  .top-actions .search-wrap {
-    flex: 1 1 7rem;
-    min-width: 6.5rem;
-    max-width: none;
-    width: auto;
-  }
-}
-
 @media (min-width: 640px) {
   .views-dd {
     display: none !important;
-  }
-
-  .top-inner > .top-actions {
-    flex: 1 1 auto;
-    margin-left: 0.35rem;
   }
 }
 
@@ -400,16 +431,21 @@ body {
   flex: 0 1 10rem;
   width: 9.5rem;
   max-width: 14rem;
-  min-width: 7rem;
+  min-width: 6rem;
+  display: flex;
+  align-items: center;
+  height: 2rem;
 }
 
 .search-wrap input,
 .date-wrap input {
   width: 100%;
+  height: 2rem;
+  box-sizing: border-box;
   border: 1px solid var(--line);
   background: var(--card);
   border-radius: 999px;
-  padding: 0.28rem 2.1rem 0.28rem 0.6rem;
+  padding: 0 2.1rem 0 0.6rem;
   font: inherit;
   font-size: 0.78rem;
   color: var(--ink);
@@ -478,32 +514,74 @@ body {
   background: var(--teal-soft);
 }
 
-.title-bar-actions {
+.title-bar-actions,
+.top-actions {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
   flex: 0 0 auto;
 }
 
-.circle-btn.icon-btn,
-.title-bar-actions .icon-btn {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  padding: 0;
-  justify-content: center;
-  touch-action: pan-y;
+.top-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow: visible;
 }
 
-.title-bar-actions .action-dd-btn {
+/* Tools-only row: search expands, icon cluster stays right */
+.top-toolbar > .top-actions .search-wrap {
+  flex: 1 1 8rem;
+  width: auto;
+  min-width: 6rem;
+  max-width: none;
+}
+
+/* One size for all header circles (prefs + tools) */
+.top .icon-btn,
+.top .circle-btn,
+.top .action-dd-btn.icon-btn,
+.top .title-bar-actions .action-dd-btn {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  max-width: 2rem;
+  max-height: 2rem;
+  padding: 0;
+  margin: 0;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card);
+  box-sizing: border-box;
+  flex: 0 0 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: pan-y;
+  line-height: 1;
+  font-size: 0.95rem;
+}
+
+.top .action-dd {
   width: 2rem;
   height: 2rem;
-  padding: 0;
+  flex: 0 0 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.top .icon-btn .icon-svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+}
+
+.top .icon-btn .lang-flag {
+  width: 1.15rem;
+  height: auto;
+  display: block;
 }
 
 .prefs-pair {
@@ -520,6 +598,7 @@ body {
 #btn-event-toggles.active {
   color: var(--teal-dark);
   background: var(--teal-soft);
+  border-color: var(--line);
 }
 
 .range-group {
@@ -867,11 +946,21 @@ body {
 .filter-popup-actions {
   flex: 0 0 auto;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.3rem;
   margin-top: 0.35rem;
   padding-top: 0.35rem;
   border-top: 1px solid var(--line);
+}
+
+.filter-popup-hint {
+  flex: 1 1 auto;
+  margin-right: auto;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.2;
 }
 
 .filter-popup-actions .btn {
@@ -1003,15 +1092,6 @@ body.view-map #view-map.active {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-}
-
-.top-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  max-width: 100%;
-  overflow: visible;
 }
 
 .lang-switch {
@@ -1662,8 +1742,8 @@ body.view-posters .month-nav-head {
 }
 
 .icon-btn {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 2rem;
+  height: 2rem;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card);
@@ -1675,12 +1755,14 @@ body.view-posters .month-nav-head {
   align-items: center;
   justify-content: center;
   padding: 0;
+  flex: 0 0 auto;
+  box-sizing: border-box;
 }
 
 .icon-btn .icon-svg {
   display: block;
-  width: 1rem;
-  height: 1rem;
+  width: 1.05rem;
+  height: 1.05rem;
 }
 
 .icon-btn:disabled {

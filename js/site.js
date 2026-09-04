@@ -207,6 +207,10 @@
         timer = null;
       }
     };
+    const finishShort = (e) => {
+      clear();
+      if (!firedLong && onShort) onShort(e);
+    };
     el.addEventListener("pointerdown", (e) => {
       if (e.button != null && e.button !== 0) return;
       firedLong = false;
@@ -216,12 +220,13 @@
         if (onLong) onLong(e);
       }, ms);
     });
-    el.addEventListener("pointerup", (e) => {
+    el.addEventListener("pointerup", finishShort);
+    // Android often cancels touch (scroll/sticky) instead of pointerup — still open on short.
+    el.addEventListener("pointercancel", finishShort);
+    el.addEventListener("pointerleave", (e) => {
+      if (e.pointerType === "touch") return;
       clear();
-      if (!firedLong && onShort) onShort(e);
     });
-    el.addEventListener("pointerleave", clear);
-    el.addEventListener("pointercancel", clear);
     el.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
@@ -3116,12 +3121,6 @@
       html += `<label><input type="checkbox" data-show-filter="${key}"${checked} /> ${FILTER_LABELS[key] || key}</label>`;
     });
     html += "</div></div></div>";
-    if (state.deferredInstall) {
-      html += '<div class="settings-row"><button type="button" class="btn primary" data-install>Install app</button></div>';
-    } else if (isIos() && !isStandalone()) {
-      html +=
-        '<p class="settings-hint muted">Install: Share → Add to Home Screen</p>';
-    }
     popup.innerHTML = html;
     popup.querySelector(".month-popup-close").addEventListener("click", closeSettingsPopup);
     popup.querySelectorAll("[data-cols]").forEach((btn) =>
@@ -3153,25 +3152,6 @@
         saveSettings();
       })
     );
-    const installBtn = popup.querySelector("[data-install]");
-    if (installBtn) {
-      installBtn.addEventListener("click", async () => {
-        await promptInstall();
-        renderSettingsPopup();
-      });
-    }
-  }
-
-  function isIos() {
-    return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  }
-
-  function isStandalone() {
-    return (
-      window.matchMedia("(display-mode: standalone)").matches ||
-      navigator.standalone === true
-    );
   }
 
   async function promptInstall() {
@@ -3187,10 +3167,6 @@
 
   function updateInstallUi() {
     const canInstall = Boolean(state.deferredInstall);
-    const topBtn = $("#btn-install");
-    if (topBtn) {
-      topBtn.classList.toggle("hidden", !canInstall);
-    }
     const aboutBtn = $("#about-install");
     if (aboutBtn) {
       aboutBtn.disabled = !canInstall;
@@ -3198,7 +3174,6 @@
         ? "Install this app"
         : "Install not available in this browser (or already installed)";
     }
-    if (!$("#settings-popup").classList.contains("hidden")) renderSettingsPopup();
   }
 
   function registerPwa() {
@@ -3413,8 +3388,6 @@
     document.addEventListener("click", (e) => {
       if (!e.target.closest(".cal-menu-wrap")) closeCalMenus();
     });
-    const installTop = $("#btn-install");
-    if (installTop) installTop.addEventListener("click", () => promptInstall());
     $('[data-share="copy"]').addEventListener("click", async () => {
       if (!state.selected) return;
       const url = eventShareUrl(state.selected);

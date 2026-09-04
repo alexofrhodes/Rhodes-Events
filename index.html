@@ -97,50 +97,51 @@
         </button>
         <button type="button" id="btn-about" class="icon-btn circle-btn" aria-label="About" title="About">?</button>
       </div>
+    </div>
+    <div class="top-toolbar">
       <div class="top-actions">
         <div class="search-wrap" data-filter="search">
           <span class="sr-only">Search</span>
           <input id="search" type="search" placeholder="Search…" autocomplete="off" />
           <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" title="Clear">×</button>
         </div>
-        <button type="button" id="btn-event-toggles" class="icon-btn" data-filter="toggles" aria-label="Event visibility" title="Hide all-day / multi-day" aria-haspopup="true" aria-expanded="false">
+        <button type="button" id="btn-event-toggles" class="icon-btn circle-btn" data-filter="toggles" aria-label="Event visibility" title="Hide all-day / multi-day" aria-haspopup="true" aria-expanded="false">
           <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path fill="currentColor" d="M12 5c-5 0-9.27 3.11-11 7 1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
           </svg>
         </button>
-        <button type="button" id="btn-venues" class="icon-btn" aria-label="Venues" title="Venues · long-press to clear" aria-haspopup="true" aria-expanded="false">
+        <button type="button" id="btn-venues" class="icon-btn circle-btn" aria-label="Venues" title="Venues · long-press to clear" aria-haspopup="true" aria-expanded="false">
           <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path fill="currentColor" d="M12 3 4 9v12h5v-6h6v6h5V9l-8-6zm0 2.2 6 4.5V19h-2v-6H8v6H6v-9.3l6-4.5z"/>
           </svg>
         </button>
-        <button type="button" id="btn-cats" class="icon-btn" aria-label="Categories" title="Categories · long-press to clear" aria-haspopup="true" aria-expanded="false">
+        <button type="button" id="btn-cats" class="icon-btn circle-btn" aria-label="Categories" title="Categories · long-press to clear" aria-haspopup="true" aria-expanded="false">
           <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path fill="currentColor" d="M21.41 11.58l-9-9A2 2 0 0 0 11 2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 .59 1.41l9 9a2 2 0 0 0 2.82 0l7-7a2 2 0 0 0 0-2.83zM5.5 7A1.5 1.5 0 1 1 7 5.5 1.5 1.5 0 0 1 5.5 7z"/>
           </svg>
         </button>
-        <button type="button" id="btn-view-map" class="icon-btn top-view-btn" data-view="map" aria-label="Map" title="Map">
+        <button type="button" id="btn-view-map" class="icon-btn circle-btn top-view-btn" data-view="map" aria-label="Map" title="Map">
           <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/>
           </svg>
         </button>
-        <button type="button" id="btn-view-starred" class="icon-btn top-view-btn" data-view="starred" aria-label="Starred" title="Starred">
+        <button type="button" id="btn-view-starred" class="icon-btn circle-btn top-view-btn" data-view="starred" aria-label="Starred" title="Starred">
           <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
           </svg>
         </button>
-        <button type="button" id="btn-install" class="icon-btn hidden" aria-label="Install app" title="Install app">↓</button>
       </div>
-    </div>
-    <div class="hscroll-wrap views-wrap" id="views-wrap">
-      <div class="hscroll-fade hscroll-fade-start hidden" data-hscroll-fade="start" aria-hidden="true"></div>
-      <div class="views hscroll" id="views-scroll" role="tablist">
-        <button type="button" class="view-btn active" data-view="cards" aria-selected="true">Cards</button>
-        <button type="button" class="view-btn" data-view="rails" aria-selected="false">Rails</button>
-        <button type="button" class="view-btn" data-view="table" aria-selected="false">Table</button>
-        <button type="button" class="view-btn" data-view="posters" aria-selected="false">Posters</button>
-        <button type="button" class="view-btn" data-view="calendar" aria-selected="false">Calendar</button>
+      <div class="hscroll-wrap views-wrap" id="views-wrap">
+        <div class="hscroll-fade hscroll-fade-start hidden" data-hscroll-fade="start" aria-hidden="true"></div>
+        <div class="views hscroll" id="views-scroll" role="tablist">
+          <button type="button" class="view-btn active" data-view="cards" aria-selected="true">Cards</button>
+          <button type="button" class="view-btn" data-view="rails" aria-selected="false">Rails</button>
+          <button type="button" class="view-btn" data-view="table" aria-selected="false">Table</button>
+          <button type="button" class="view-btn" data-view="posters" aria-selected="false">Posters</button>
+          <button type="button" class="view-btn" data-view="calendar" aria-selected="false">Calendar</button>
+        </div>
+        <div class="hscroll-fade hscroll-fade-end hidden" data-hscroll-fade="end" aria-hidden="true"></div>
       </div>
-      <div class="hscroll-fade hscroll-fade-end hidden" data-hscroll-fade="end" aria-hidden="true"></div>
     </div>
     <input id="date-from" type="hidden" aria-label="From date" />
     <input id="date-to" type="hidden" aria-label="To date" />
@@ -172,6 +173,7 @@
     </div>
     <div id="cat-checks" class="filter-checks"></div>
     <div class="filter-popup-actions">
+      <span class="filter-popup-hint">Long-press icon to clear</span>
       <button type="button" id="cat-clear" class="btn ghost">Clear</button>
       <button type="button" id="cat-done" class="btn primary">Done</button>
     </div>
@@ -187,6 +189,7 @@
     </div>
     <div id="loc-checks" class="filter-checks"></div>
     <div class="filter-popup-actions">
+      <span class="filter-popup-hint">Long-press icon to clear</span>
       <button type="button" id="loc-clear" class="btn ghost">Clear</button>
       <button type="button" id="loc-done" class="btn primary">Done</button>
     </div>
