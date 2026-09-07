@@ -290,8 +290,13 @@
   }
 
   function updatePrintButton() {
-    const printItem = $("#share-dd-print");
-    if (printItem) printItem.classList.toggle("hidden", !state.printEnabled || state.view === "rails");
+    const btn = $("#btn-print");
+    if (!btn) return;
+    const on = Boolean(state.printEnabled) && state.view !== "rails";
+    btn.disabled = !on;
+    btn.setAttribute("aria-disabled", on ? "false" : "true");
+    btn.title = on ? "Print" : "Print not available in this view";
+    btn.classList.remove("hidden");
   }
 
   function siteShareUrl() {
@@ -2638,11 +2643,68 @@
     return x;
   }
 
-  function printChipHtml(ev) {
+  function printEventsForCurrentView() {
+    ensureFocusMonth();
+    if (state.view === "starred" || state.view === "map") {
+      return state.filtered.slice().sort(sortSoonest);
+    }
+    if (state.view === "cards" || state.view === "table" || state.view === "posters") {
+      return printEventsForMonth(state.focusMonth || monthKeyFromDate(new Date()));
+    }
+    return state.filtered.slice().sort(sortSoonest);
+  }
+
+  function truncatePrintText(value, max) {
+    const t = String(value || "").trim();
+    if (!t) return "";
+    if (t.length <= max) return t;
+    return `${t.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
+  }
+
+  function printSiteUrl() {
+    const host = location.hostname || "";
+    if (host === "localhost" || host === "127.0.0.1" || !host) {
+      return "https://alexofrhodes.github.io/Rhodes-Events";
+    }
+    const path = (location.pathname || "").replace(/\/index\.html$/i, "").replace(/\/$/, "");
+    return `${location.origin}${path}` || "https://alexofrhodes.github.io/Rhodes-Events";
+  }
+
+  function wrapPrintHtml(bodyHtml) {
+    const url = printSiteUrl();
+    const title = (state.data && state.data.title) || document.title || "Events";
+    return `<div class="print-shell">
+      <header class="print-brand">
+        <img class="print-brand-icon" src="icons/icon-192.png" alt="" width="36" height="36" />
+        <div class="print-brand-text">
+          <div class="print-brand-title">${escapeHtml(title)}</div>
+          <div class="print-brand-url">${escapeHtml(url)}</div>
+        </div>
+        <img class="print-brand-qr" src="icons/site-qr.png" alt="QR code for site" width="72" height="72" />
+      </header>
+      <div class="print-body">${bodyHtml}</div>
+      <footer class="print-footer">
+        <p class="print-footer-note">Details may change without notice; confirm with the venue or organizer.</p>
+      </footer>
+    </div>`;
+  }
+
+  function printChipHtml(ev, locMax) {
     const time = ev.time || "All day";
+    const loc = locMax ? truncatePrintText(ev.location, locMax) : "";
+    const locHtml = loc ? ` <span class="print-chip-loc">· ${escapeHtml(loc)}</span>` : "";
     return `<div class="print-chip"><span class="print-chip-time">${escapeHtml(time)}</span> ${escapeHtml(
       ev.title || "Untitled"
-    )}</div>`;
+    )}${locHtml}</div>`;
+  }
+
+  function printListRowHtml(ev) {
+    const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+    return `<div class="print-list-row">${
+      thumb ? `<img src="${escapeAttr(thumb)}" alt="" />` : '<span class="print-list-ph"></span>'
+    }<div><strong>${escapeHtml(ev.title || "Untitled")}</strong><span class="meta">${escapeHtml(
+      fmtWhen(ev)
+    )}${ev.location ? ` · ${escapeHtml(ev.location)}` : ""}</span></div></div>`;
   }
 
   function buildPrintMonthHtml() {
@@ -2665,7 +2727,7 @@
       const iso = `${key}-${String(day).padStart(2, "0")}`;
       const dayEvents = events.filter((ev) => eventStart(ev) <= iso && eventEnd(ev) >= iso);
       cells += `<div class="print-cal-cell"><div class="print-cal-daynum">${day}</div>${dayEvents
-        .map(printChipHtml)
+        .map((ev) => printChipHtml(ev, 14))
         .join("")}</div>`;
     }
     const title = focus.toLocaleDateString(undefined, { month: "long", year: "numeric" });
@@ -2688,7 +2750,7 @@
       const items = eventsOnDay(iso);
       cols += `<div class="print-week-col"><div class="print-week-head">${escapeHtml(
         d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" })
-      )}</div>${items.map(printChipHtml).join("") || '<p class="print-empty">—</p>'}</div>`;
+      )}</div>${items.map((ev) => printChipHtml(ev, 20)).join("") || '<p class="print-empty">—</p>'}</div>`;
     }
     return `<h1>Week — ${escapeHtml(title)}</h1><div class="print-week-grid">${cols}</div>`;
   }
@@ -2727,34 +2789,38 @@
     });
     const days = [...grouped.keys()].sort();
     if (!days.length) return `<h1>Agenda</h1><p class="print-empty">No upcoming events.</p>`;
+
+    const rowHtml = (ev) => {
+      const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+      return `<div class="print-agenda-row">${
+        thumb ? `<img src="${escapeAttr(thumb)}" alt="" />` : ""
+      }<div><strong>${escapeHtml(ev.title || "Untitled")}</strong><span class="meta">${escapeHtml(
+        ev.time || "All day"
+      )}${ev.location ? ` · ${escapeHtml(ev.location)}` : ""}</span></div></div>`;
+    };
+
     let html = "<h1>Agenda</h1>";
     days.forEach((day) => {
       const d = parseISO(day);
-      html += `<h2 class="print-agenda-day">${escapeHtml(
+      const items = grouped.get(day).slice().sort(sortSoonest);
+      const tight = items.length <= 2 ? " print-agenda-tight" : "";
+      const label = escapeHtml(
         d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
-      )}</h2>`;
-      grouped
-        .get(day)
-        .slice()
-        .sort(sortSoonest)
-        .forEach((ev) => {
-          const thumb = imageUrl(ev, true) || imageUrl(ev, false);
-          html += `<div class="print-agenda-row">${
-            thumb ? `<img src="${escapeAttr(thumb)}" alt="" />` : ""
-          }<div><strong>${escapeHtml(ev.title || "Untitled")}</strong><span class="meta">${escapeHtml(
-            ev.time || "All day"
-          )}${ev.location ? ` · ${escapeHtml(ev.location)}` : ""}</span></div></div>`;
-        });
+      );
+      html += `<section class="print-agenda-section${tight}">`;
+      html += `<div class="print-agenda-keep"><h2 class="print-agenda-day">${label}</h2>`;
+      if (items.length) html += rowHtml(items[0]);
+      html += "</div>";
+      items.slice(1).forEach((ev) => {
+        html += rowHtml(ev);
+      });
+      html += "</section>";
     });
     return html;
   }
 
   function buildPrintTableHtml() {
-    ensureFocusMonth();
-    const events =
-      state.view === "starred"
-        ? state.filtered.slice().sort(sortSoonest)
-        : printEventsForMonth(state.focusMonth || monthKeyFromDate(new Date()));
+    const events = printEventsForCurrentView();
     const title = (state.data && state.data.title) || "Events";
     let rows = events
       .map((ev) => {
@@ -2777,37 +2843,134 @@
       </table>`;
   }
 
-  function prepareCalendarPrint() {
+  function buildPrintListHtml(heading) {
+    const events = printEventsForCurrentView();
+    const title = heading || (state.data && state.data.title) || "Events";
+    if (!events.length) return `<h1>${escapeHtml(title)}</h1><p class="print-empty">No events.</p>`;
+    return `<h1>${escapeHtml(title)} (${events.length})</h1>${events.map(printListRowHtml).join("")}`;
+  }
+
+  function buildPrintPostersHtml() {
+    const events = printEventsForCurrentView();
+    const title = (state.data && state.data.title) || "Posters";
+    if (!events.length) return `<h1>${escapeHtml(title)}</h1><p class="print-empty">No events.</p>`;
+    const tiles = events
+      .map((ev) => {
+        const thumb = imageUrl(ev, true) || imageUrl(ev, false);
+        return `<article class="print-poster-tile">${
+          thumb ? `<img src="${escapeAttr(thumb)}" alt="" />` : '<div class="print-poster-ph"></div>'
+        }<div class="print-poster-cap"><strong>${escapeHtml(ev.title || "Untitled")}</strong><span class="meta">${escapeHtml(
+          fmtWhen(ev)
+        )}${ev.location ? ` · ${escapeHtml(ev.location)}` : ""}</span></div></article>`;
+      })
+      .join("");
+    return `<h1>${escapeHtml(title)} (${events.length})</h1><div class="print-poster-grid">${tiles}</div>`;
+  }
+
+  function buildPrintMapHtml() {
+    const events = printEventsForCurrentView();
+    const title = "Map — venues";
+    if (!events.length) return `<h1>${escapeHtml(title)}</h1><p class="print-empty">No events.</p>`;
+    const rows = events
+      .map((ev) => {
+        return `<div class="print-list-row print-map-row"><div><strong>${escapeHtml(
+          ev.title || "Untitled"
+        )}</strong><span class="meta">${escapeHtml(fmtWhen(ev))}${
+          ev.location ? ` · ${escapeHtml(ev.location)}` : ""
+        }</span></div></div>`;
+      })
+      .join("");
+    return `<h1>${escapeHtml(title)} (${events.length})</h1>${rows}`;
+  }
+
+  function buildPrintHtml() {
+    if (state.view === "calendar") {
+      const mode = state.calMode || "month";
+      if (mode === "week") return buildPrintWeekHtml();
+      if (mode === "day") return buildPrintDayHtml();
+      if (mode === "agenda") return buildPrintAgendaHtml();
+      return buildPrintMonthHtml();
+    }
+    if (state.view === "table") return buildPrintTableHtml();
+    if (state.view === "posters") return buildPrintPostersHtml();
+    if (state.view === "map") return buildPrintMapHtml();
+    if (state.view === "starred") return buildPrintListHtml("Starred");
+    return buildPrintListHtml((state.data && state.data.title) || "Events");
+  }
+
+  function fillPrintHost() {
     const host = $("#print-cal");
     if (!host) return;
-    const mode = state.calMode || "month";
-    let html = "";
-    if (mode === "week") html = buildPrintWeekHtml();
-    else if (mode === "day") html = buildPrintDayHtml();
-    else if (mode === "agenda") html = buildPrintAgendaHtml();
-    else html = buildPrintMonthHtml();
-    host.innerHTML = html;
+    host.innerHTML = wrapPrintHtml(buildPrintHtml());
+  }
+
+  function openPrintPreview() {
+    if (state.view === "rails" || !state.printEnabled) return;
+    fillPrintHost();
+    const preview = $("#print-preview");
+    if (!preview) return;
+    preview.classList.remove("hidden");
+    document.body.classList.add("print-preview-open");
+    $("#print-preview-close")?.focus();
+  }
+
+  function closePrintPreview() {
+    const preview = $("#print-preview");
+    if (preview) preview.classList.add("hidden");
+    document.body.classList.remove("print-preview-open", "printing-cal");
+    const host = $("#print-cal");
+    if (host) host.innerHTML = "";
+  }
+
+  function printFromPreview() {
+    if (state.view === "rails" || !state.printEnabled) return;
+    fillPrintHost();
+    const source = $("#print-cal");
+    if (!source) return;
+    /* Chromium/Edge often print only the viewport when content lives in a
+       fixed fullscreen overlay. Print a detached sheet on body instead.
+       Clear the preview copy so it cannot print a second time. */
+    document.querySelectorAll("#print-cal-sheet").forEach((el) => el.remove());
+    const html = source.innerHTML;
+    const sheet = document.createElement("div");
+    sheet.id = "print-cal-sheet";
+    sheet.className = "print-cal print-cal-sheet";
+    sheet.innerHTML = html;
+    source.innerHTML = "";
+    document.body.appendChild(sheet);
+    document.body.classList.add("printing-cal", "printing-sheet");
+    const cleanup = () => {
+      document.body.classList.remove("printing-cal", "printing-sheet");
+      sheet.remove();
+      if (source && !source.innerHTML) source.innerHTML = html;
+    };
+    const mq = window.matchMedia("print");
+    const onMq = (e) => {
+      if (!e.matches) {
+        cleanup();
+        mq.removeEventListener("change", onMq);
+      }
+    };
+    try {
+      mq.addEventListener("change", onMq);
+    } catch (_) {}
+    window.print();
+    setTimeout(() => {
+      if (!mq.matches) cleanup();
+    }, 2000);
   }
 
   function printPage() {
-    if (state.view === "rails" || !state.printEnabled) return;
-    const host = $("#print-cal");
-    if (state.view === "calendar") {
-      prepareCalendarPrint();
-      document.body.classList.add("printing-cal");
-    } else if (state.view === "table") {
-      if (host) host.innerHTML = buildPrintTableHtml();
-      document.body.classList.add("printing-cal");
-    } else if (host) {
-      host.innerHTML = "";
-    }
-    window.print();
+    openPrintPreview();
   }
 
   window.addEventListener("afterprint", () => {
-    document.body.classList.remove("printing-cal");
-    const host = $("#print-cal");
-    if (host) host.innerHTML = "";
+    const sheet = document.getElementById("print-cal-sheet");
+    const source = $("#print-cal");
+    const html = sheet ? sheet.innerHTML : "";
+    document.body.classList.remove("printing-cal", "printing-sheet");
+    if (sheet) sheet.remove();
+    if (source && !source.innerHTML && html) source.innerHTML = html;
   });
 
   /* ===== Dates popup (Month | Range tabs) ===== */
@@ -3101,7 +3264,7 @@
     const popup = $("#settings-popup");
     let html = '<div class="settings-popup-head"><span>Settings</span>';
     html += '<button type="button" class="month-popup-close" aria-label="Close">\u00d7</button></div>';
-    html += '<div class="settings-row"><label>Columns</label><div class="settings-choices">';
+    html += '<div class="settings-row"><label>Cards max Columns</label><div class="settings-choices">';
     [1, 2, 3].forEach((n) => {
       const active = state.cardsPerRow === n ? " active" : "";
       html += `<button type="button" data-cols="${n}" class="${active.trim()}">${n}</button>`;
@@ -3244,6 +3407,18 @@
       if (!e.target.closest("#theme-dd")) closeThemeDropdown();
       if (!e.target.closest("#share-dd")) closeShareDropdown();
     });
+    $("#btn-print")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openPrintPreview();
+    });
+    $("#print-preview-print")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      printFromPreview();
+    });
+    $("#print-preview-close")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closePrintPreview();
+    });
     $("#btn-share-site")?.addEventListener("click", onShareSiteClick);
     $("#share-dd-menu")?.addEventListener("click", async (e) => {
       const item = e.target.closest("[data-site-share]");
@@ -3263,9 +3438,6 @@
         } catch (_) {
           prompt("Copy this link", siteShareUrl());
         }
-      } else if (kind === "print") {
-        closeShareDropdown();
-        printPage();
       } else {
         closeShareDropdown();
       }
@@ -3415,7 +3587,8 @@
     window.addEventListener("hashchange", readHash);
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        if ([...$$(".cal-menu")].some((m) => !m.classList.contains("hidden"))) closeCalMenus();
+        if ($("#print-preview") && !$("#print-preview").classList.contains("hidden")) closePrintPreview();
+        else if ([...$$(".cal-menu")].some((m) => !m.classList.contains("hidden"))) closeCalMenus();
         else if ($("#lang-dd-menu") && !$("#lang-dd-menu").classList.contains("hidden")) closeLangDropdown();
         else if ($("#theme-dd-menu") && !$("#theme-dd-menu").classList.contains("hidden")) closeThemeDropdown();
         else if ($("#share-dd-menu") && !$("#share-dd-menu").classList.contains("hidden")) closeShareDropdown();

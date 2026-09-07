@@ -1476,6 +1476,80 @@ body.view-posters .month-nav-head {
     --shadow: none;
   }
 
+  @page {
+    margin: 12mm 10mm 18mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* Detached print sheet: full document flow across pages */
+  body.printing-sheet > *:not(#print-cal-sheet),
+  body.printing-sheet #print-preview {
+    display: none !important;
+  }
+
+  body.printing-sheet #print-cal-sheet {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 0 12mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #111 !important;
+    font-size: 11px !important;
+  }
+
+  /* Brand/QR once at start of document (first page only — not position:fixed) */
+  body.printing-sheet .print-brand {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto !important;
+    margin: 0 0 0.75rem !important;
+    padding: 0 0 0.45rem !important;
+    background: transparent !important;
+    break-after: avoid;
+    page-break-after: avoid;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Disclaimer on every page bottom — kept inside @page bottom margin */
+  body.printing-sheet .print-footer {
+    position: fixed !important;
+    left: 0;
+    right: 0;
+    bottom: 3mm;
+    z-index: 2;
+    margin: 0 !important;
+    padding: 0.2rem 0.5rem 0 !important;
+    background: #fff !important;
+    border-top: 1px solid #ddd !important;
+    text-align: center;
+  }
+
+  body.printing-sheet .print-shell {
+    padding: 0 !important;
+  }
+
+  body.printing-sheet .print-body {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
   .top .top-actions,
   .title-bar-actions,
   .views,
@@ -1491,8 +1565,10 @@ body.view-posters .month-nav-head {
   .event-toggles,
   .search-wrap,
   #btn-event-toggles,
+  #btn-print,
   #btn-share-site,
-  #btn-about {
+  #btn-about,
+  .print-preview-chrome {
     display: none !important;
   }
 
@@ -1529,43 +1605,98 @@ body.view-posters .month-nav-head {
   body.printing-cal main,
   body.printing-cal .site-info,
   body.printing-cal .detail,
-  body.printing-cal .lightbox {
+  body.printing-cal .lightbox,
+  body:is(.printing-cal, .print-preview-open) .print-preview-chrome,
+  body.print-preview-open .top,
+  body.print-preview-open main,
+  body.print-preview-open .site-info,
+  body.print-preview-open .detail,
+  body.print-preview-open .lightbox,
+  body.print-preview-open .print-preview-chrome,
+  body.print-preview-open .month-nav-head {
     display: none !important;
   }
 
-  body.printing-cal .print-cal {
+  body.printing-cal:not(.printing-sheet) #print-preview,
+  body.print-preview-open:not(.printing-sheet) #print-preview {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+    z-index: auto !important;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-preview-scroll,
+  body.print-preview-open .print-preview-scroll {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-cal,
+  body.print-preview-open .print-cal {
     display: block !important;
     padding: 0.75rem;
     font-size: 11px;
     color: #111;
+    max-width: none !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  body.printing-cal .print-cal h1 {
+  body:is(.printing-cal, .print-preview-open) .print-cal h1 {
     margin: 0 0 0.65rem;
     font-size: 1.15rem;
   }
 
-  body.printing-cal .print-cal h2,
-  body.printing-cal .print-agenda-day {
-    margin: 0.7rem 0 0.3rem;
+  body:is(.printing-cal, .print-preview-open) .print-cal h2,
+  body:is(.printing-cal, .print-preview-open) .print-agenda-day {
+    margin: 0.55rem 0 0.25rem;
     font-size: 0.95rem;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
   }
 
-  body.printing-cal .print-cal-grid {
+  body:is(.printing-cal, .print-preview-open) .print-agenda-section {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-agenda-tight,
+  body:is(.printing-cal, .print-preview-open) .print-agenda-keep {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-agenda-day + .print-agenda-row,
+  body:is(.printing-cal, .print-preview-open) .print-agenda-day + .print-list-row {
+    break-before: avoid !important;
+    page-break-before: avoid !important;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-cal-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 2px;
     border: 1px solid #ccc;
   }
 
-  body.printing-cal .print-cal-dows {
+  body:is(.printing-cal, .print-preview-open) .print-cal-dows {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 2px;
     margin-bottom: 2px;
   }
 
-  body.printing-cal .print-cal-dows > div {
+  body:is(.printing-cal, .print-preview-open) .print-cal-dows > div {
     background: #eee;
     font-weight: 700;
     text-align: center;
@@ -1573,75 +1704,80 @@ body.view-posters .month-nav-head {
     border: 1px solid #ccc;
   }
 
-  body.printing-cal .print-cal-cell {
+  body:is(.printing-cal, .print-preview-open) .print-cal-cell {
     min-height: 4.5rem;
     border: 1px solid #ddd;
     padding: 0.2rem;
     break-inside: avoid;
+    page-break-inside: avoid;
   }
 
-  body.printing-cal .print-cal-cell.empty {
+  body:is(.printing-cal, .print-preview-open) .print-cal-cell.empty {
     background: #f7f7f7;
   }
 
-  body.printing-cal .print-cal-daynum {
+  body:is(.printing-cal, .print-preview-open) .print-cal-daynum {
     font-weight: 700;
     font-size: 0.75rem;
     margin-bottom: 0.15rem;
   }
 
-  body.printing-cal .print-chip {
+  body:is(.printing-cal, .print-preview-open) .print-chip {
     font-size: 0.65rem;
     line-height: 1.2;
     margin: 0 0 0.15rem;
     break-inside: avoid;
+    page-break-inside: avoid;
   }
 
-  body.printing-cal .print-chip-time {
+  body:is(.printing-cal, .print-preview-open) .print-chip-time {
     font-weight: 700;
   }
 
-  body.printing-cal .print-week-grid {
+  body:is(.printing-cal, .print-preview-open) .print-week-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 0.35rem;
   }
 
-  body.printing-cal .print-week-col {
+  body:is(.printing-cal, .print-preview-open) .print-week-col {
     border: 1px solid #ddd;
     padding: 0.3rem;
     min-height: 6rem;
     break-inside: avoid;
+    page-break-inside: avoid;
   }
 
-  body.printing-cal .print-week-head {
+  body:is(.printing-cal, .print-preview-open) .print-week-head {
     font-weight: 700;
     margin-bottom: 0.35rem;
     font-size: 0.75rem;
   }
 
-  body.printing-cal .print-day-card {
+  body:is(.printing-cal, .print-preview-open) .print-day-card {
     display: grid;
     grid-template-columns: 64px 1fr;
     gap: 0.5rem;
     border: 1px solid #ddd;
     padding: 0.4rem;
     margin-bottom: 0.4rem;
-    break-inside: avoid;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  body.printing-cal .print-day-card img {
+  body:is(.printing-cal, .print-preview-open) .print-day-card img {
     width: 64px;
     height: 64px;
     object-fit: cover;
   }
 
-  body.printing-cal .print-day-card h3 {
+  body:is(.printing-cal, .print-preview-open) .print-day-card h3 {
     margin: 0 0 0.2rem;
     font-size: 0.95rem;
   }
 
-  body.printing-cal .print-agenda-row {
+  body:is(.printing-cal, .print-preview-open) .print-agenda-row,
+  body:is(.printing-cal, .print-preview-open) .print-list-row {
     display: grid;
     grid-template-columns: 36px 1fr;
     gap: 0.4rem;
@@ -1649,47 +1785,181 @@ body.view-posters .month-nav-head {
     border: 1px solid #ddd;
     padding: 0.3rem 0.4rem;
     margin-bottom: 0.25rem;
-    break-inside: avoid;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  body.printing-cal .print-agenda-row img {
+  body:is(.printing-cal, .print-preview-open) .print-map-row {
+    grid-template-columns: 1fr;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-agenda-row img,
+  body:is(.printing-cal, .print-preview-open) .print-list-row img {
     width: 36px;
     height: 36px;
     object-fit: cover;
   }
 
-  body.printing-cal .print-agenda-row .meta {
+  body:is(.printing-cal, .print-preview-open) .print-list-ph {
+    width: 36px;
+    height: 36px;
+    background: #eee;
+    display: block;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-agenda-row .meta,
+  body:is(.printing-cal, .print-preview-open) .print-list-row .meta {
     display: block;
     color: #555;
     font-size: 0.75rem;
   }
 
-  body.printing-cal .print-table {
+  body:is(.printing-cal, .print-preview-open) .print-poster-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-poster-tile {
+    border: 1px solid #ddd;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    overflow: hidden;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-poster-tile img,
+  body:is(.printing-cal, .print-preview-open) .print-poster-ph {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    display: block;
+    background: #eee;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-poster-cap {
+    padding: 0.3rem 0.35rem 0.4rem;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-poster-cap .meta {
+    display: block;
+    color: #555;
+    font-size: 0.7rem;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-table {
     width: 100%;
     border-collapse: collapse;
   }
 
-  body.printing-cal .print-table th,
-  body.printing-cal .print-table td {
+  body:is(.printing-cal, .print-preview-open) .print-table th,
+  body:is(.printing-cal, .print-preview-open) .print-table td {
     border: 1px solid #ccc;
     padding: 0.3rem 0.4rem;
     text-align: left;
     vertical-align: top;
   }
 
-  body.printing-cal .print-table th {
+  body:is(.printing-cal, .print-preview-open) .print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-table th {
     background: #eee;
   }
 
-  body.printing-cal .print-thumb img {
+  body:is(.printing-cal, .print-preview-open) .print-thumb img {
     width: 36px;
     height: 36px;
     object-fit: cover;
   }
 
-  body.printing-cal .print-empty {
+  body:is(.printing-cal, .print-preview-open) .print-empty {
     color: #666;
     margin: 0;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-cal img {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-shell {
+    position: relative;
+    padding-bottom: 0.5rem;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0 0 0.75rem;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid #ccc;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-brand-text {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-brand-icon {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    flex: 0 0 auto;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-brand-qr {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    flex: 0 0 auto;
+    margin-left: auto;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-brand-title {
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-brand-url {
+    font-size: 0.72rem;
+    color: #555;
+    word-break: break-all;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-body {
+    padding-bottom: 0.35rem;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-chip-loc {
+    color: #555;
+    font-weight: 500;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-footer {
+    position: static;
+    margin-top: 0.85rem;
+    text-align: center;
+    padding: 0.35rem 0 0;
+    background: transparent;
+    border-top: 1px solid #ddd;
+    font-size: 0.58rem;
+    color: #666;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  body:is(.printing-cal, .print-preview-open) .print-footer-note {
+    margin: 0;
+    line-height: 1.2;
+    color: #666;
   }
 
   .cal-toolbar,
@@ -2222,6 +2492,353 @@ button.rails-day-head {
 
 .print-cal {
   display: none;
+}
+
+.print-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper, #fff);
+  color: var(--ink, #1c1917);
+}
+
+.print-preview.hidden {
+  display: none !important;
+}
+
+.print-preview-chrome {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: calc(0.65rem + env(safe-area-inset-top, 0px)) 0.85rem 0.65rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+  isolation: isolate;
+}
+
+.print-preview-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.print-preview-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.print-preview-btn {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+}
+
+.print-preview-btn.primary {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+.print-preview-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.85rem;
+  background: #f5f5f4;
+}
+
+#print-preview:not(.hidden) .print-cal {
+  display: block;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 0.85rem;
+  background: #fff;
+  color: #111;
+  font-size: 12px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.08);
+}
+
+#print-preview:not(.hidden) .print-cal h1 {
+  margin: 0 0 0.65rem;
+  font-size: 1.15rem;
+}
+
+#print-preview:not(.hidden) .print-cal h2,
+#print-preview:not(.hidden) .print-agenda-day {
+  margin: 0.7rem 0 0.3rem;
+  font-size: 0.95rem;
+}
+
+#print-preview:not(.hidden) .print-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  border: 1px solid #ccc;
+}
+
+#print-preview:not(.hidden) .print-cal-dows {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+#print-preview:not(.hidden) .print-cal-dows > div {
+  background: #eee;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.25rem;
+  border: 1px solid #ccc;
+}
+
+#print-preview:not(.hidden) .print-cal-cell {
+  min-height: 4.5rem;
+  border: 1px solid #ddd;
+  padding: 0.2rem;
+}
+
+#print-preview:not(.hidden) .print-cal-cell.empty {
+  background: #f7f7f7;
+}
+
+#print-preview:not(.hidden) .print-cal-daynum {
+  font-weight: 700;
+  font-size: 0.75rem;
+  margin-bottom: 0.15rem;
+}
+
+#print-preview:not(.hidden) .print-chip {
+  font-size: 0.65rem;
+  line-height: 1.2;
+  margin: 0 0 0.15rem;
+}
+
+#print-preview:not(.hidden) .print-chip-time {
+  font-weight: 700;
+}
+
+#print-preview:not(.hidden) .print-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.35rem;
+}
+
+#print-preview:not(.hidden) .print-week-col {
+  border: 1px solid #ddd;
+  padding: 0.3rem;
+  min-height: 6rem;
+}
+
+#print-preview:not(.hidden) .print-week-head {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+}
+
+#print-preview:not(.hidden) .print-day-card {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 0.5rem;
+  border: 1px solid #ddd;
+  padding: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+#print-preview:not(.hidden) .print-day-card img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+}
+
+#print-preview:not(.hidden) .print-day-card h3 {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
+}
+
+#print-preview:not(.hidden) .print-agenda-row,
+#print-preview:not(.hidden) .print-list-row {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 0.4rem;
+  align-items: start;
+  border: 1px solid #ddd;
+  padding: 0.3rem 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+#print-preview:not(.hidden) .print-map-row {
+  grid-template-columns: 1fr;
+}
+
+#print-preview:not(.hidden) .print-agenda-row img,
+#print-preview:not(.hidden) .print-list-row img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+}
+
+#print-preview:not(.hidden) .print-list-ph {
+  width: 36px;
+  height: 36px;
+  background: #eee;
+  display: block;
+}
+
+#print-preview:not(.hidden) .print-agenda-row .meta,
+#print-preview:not(.hidden) .print-list-row .meta {
+  display: block;
+  color: #555;
+  font-size: 0.75rem;
+}
+
+#print-preview:not(.hidden) .print-poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.45rem;
+}
+
+#print-preview:not(.hidden) .print-poster-tile {
+  border: 1px solid #ddd;
+  overflow: hidden;
+  background: #fff;
+}
+
+#print-preview:not(.hidden) .print-poster-tile img,
+#print-preview:not(.hidden) .print-poster-ph {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+  background: #eee;
+}
+
+#print-preview:not(.hidden) .print-poster-cap {
+  padding: 0.3rem 0.35rem 0.4rem;
+}
+
+#print-preview:not(.hidden) .print-poster-cap .meta {
+  display: block;
+  color: #555;
+  font-size: 0.7rem;
+}
+
+#print-preview:not(.hidden) .print-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#print-preview:not(.hidden) .print-table th,
+#print-preview:not(.hidden) .print-table td {
+  border: 1px solid #ccc;
+  padding: 0.3rem 0.4rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+#print-preview:not(.hidden) .print-table th {
+  background: #eee;
+}
+
+#print-preview:not(.hidden) .print-thumb img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+}
+
+#print-preview:not(.hidden) .print-empty {
+  color: #666;
+  margin: 0;
+}
+
+#print-preview:not(.hidden) .print-shell {
+  position: relative;
+  padding-bottom: 2.5rem;
+}
+
+#print-preview:not(.hidden) .print-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #ccc;
+}
+
+#print-preview:not(.hidden) .print-brand-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#print-preview:not(.hidden) .print-brand-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+#print-preview:not(.hidden) .print-brand-qr {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+#print-preview:not(.hidden) .print-brand-title {
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+#print-preview:not(.hidden) .print-brand-url {
+  font-size: 0.72rem;
+  color: #555;
+  word-break: break-all;
+}
+
+#print-preview:not(.hidden) .print-chip-loc {
+  color: #555;
+  font-weight: 500;
+}
+
+#print-preview:not(.hidden) .print-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 1rem;
+  text-align: center;
+  padding: 0.3rem 0.35rem 0.15rem;
+  background: #fff;
+  border-top: 1px solid #ddd;
+  font-size: 0.62rem;
+  color: #666;
+}
+
+#print-preview:not(.hidden) .print-footer-note {
+  margin: 0;
+  line-height: 1.25;
+  color: #666;
+}
+
+body.print-preview-open {
+  overflow: hidden;
 }
 
 

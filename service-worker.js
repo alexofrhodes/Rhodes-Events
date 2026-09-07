@@ -1,5 +1,5 @@
 /* PWA: precache app shell; network-first so republish updates show. */
-const SHELL = "events-shell-v42";
+const SHELL = "events-shell-v51";
 const SHELL_URLS = [
   "./",
   "index.html",
@@ -8,6 +8,7 @@ const SHELL_URLS = [
   "manifest.webmanifest",
   "icons/icon-192.png",
   "icons/icon-512.png",
+  "icons/site-qr.png",
   "icons/flag-gb.svg",
   "icons/flag-gr.svg",
 ];
@@ -21,6 +22,7 @@ function isShellPath(path) {
     path.endsWith("/manifest.webmanifest") ||
     path.endsWith("/icons/icon-192.png") ||
     path.endsWith("/icons/icon-512.png") ||
+    path.endsWith("/icons/site-qr.png") ||
     path.endsWith("/icons/flag-gb.svg") ||
     path.endsWith("/icons/flag-gr.svg")
   );
