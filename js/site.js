@@ -199,30 +199,51 @@
 
   function bindLongPress(el, { onShort, onLong, ms = 550 } = {}) {
     if (!el) return;
+    const MOVE_PX = 10;
     let timer = null;
     let firedLong = false;
+    let settled = false;
+    let moved = false;
+    let x0 = 0;
+    let y0 = 0;
     const clear = () => {
       if (timer != null) {
         clearTimeout(timer);
         timer = null;
       }
     };
-    const finishShort = (e) => {
+    const settleShort = (e) => {
+      if (settled || moved || firedLong) return;
+      settled = true;
       clear();
-      if (!firedLong && onShort) onShort(e);
+      if (onShort) onShort(e);
     };
     el.addEventListener("pointerdown", (e) => {
       if (e.button != null && e.button !== 0) return;
       firedLong = false;
+      settled = false;
+      moved = false;
+      x0 = e.clientX;
+      y0 = e.clientY;
       clear();
       timer = setTimeout(() => {
+        if (settled || moved) return;
+        settled = true;
         firedLong = true;
+        clear();
         if (onLong) onLong(e);
       }, ms);
     });
-    el.addEventListener("pointerup", finishShort);
-    // Android often cancels touch (scroll/sticky) instead of pointerup — still open on short.
-    el.addEventListener("pointercancel", finishShort);
+    el.addEventListener("pointermove", (e) => {
+      if (settled || moved) return;
+      if (Math.hypot(e.clientX - x0, e.clientY - y0) > MOVE_PX) {
+        moved = true;
+        clear();
+      }
+    });
+    el.addEventListener("pointerup", settleShort);
+    // Android may cancel instead of pointerup — fire short once if still a tap.
+    el.addEventListener("pointercancel", settleShort);
     el.addEventListener("pointerleave", (e) => {
       if (e.pointerType === "touch") return;
       clear();
@@ -3235,7 +3256,18 @@
     removeBackdrop();
     _backdrop = document.createElement("div");
     _backdrop.className = "popup-backdrop";
-    _backdrop.addEventListener("click", closeFn);
+    // Ignore the same-gesture click/up that opened the popup (Android ghost close).
+    const ignoreUntil = performance.now() + 320;
+    const onClose = (e) => {
+      if (performance.now() < ignoreUntil) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      closeFn(e);
+    };
+    _backdrop.addEventListener("click", onClose);
+    _backdrop.addEventListener("pointerup", onClose);
     document.body.appendChild(_backdrop);
   }
   function removeBackdrop() {

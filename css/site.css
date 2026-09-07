@@ -563,6 +563,11 @@ body {
   font-size: 0.95rem;
 }
 
+#btn-cats,
+#btn-venues {
+  touch-action: manipulation;
+}
+
 .top .action-dd {
   width: 2rem;
   height: 2rem;
