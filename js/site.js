@@ -2539,10 +2539,10 @@
     if (navigator.share) {
       try {
         await navigator.share({ title, text, url });
-        return;
       } catch (_) {
-        /* unavailable or cancelled — show fallback */
+        /* cancel or error — do not open fallback row */
       }
+      return;
     }
     const row = shareHost || $("#share-row");
     if (!row) return;
