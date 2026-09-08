@@ -81,6 +81,9 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .sr-only {
@@ -561,6 +564,9 @@ body {
   touch-action: pan-y;
   line-height: 1;
   font-size: 0.95rem;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #btn-cats,
@@ -1125,8 +1131,8 @@ body.view-map #view-map.active {
 }
 
 #share-dd-menu.share-dd-menu {
-  top: auto;
-  bottom: calc(100% + 0.3rem);
+  top: calc(100% + 0.3rem);
+  bottom: auto;
   right: 0;
   left: auto;
   min-width: 8.5rem;

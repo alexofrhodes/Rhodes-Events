@@ -231,6 +231,9 @@
         settled = true;
         firedLong = true;
         clear();
+        try {
+          window.getSelection()?.removeAllRanges();
+        } catch (_) {}
         if (onLong) onLong(e);
       }, ms);
     });
