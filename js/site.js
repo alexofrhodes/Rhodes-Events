@@ -376,13 +376,11 @@
 
   async function onShareSiteClick(e) {
     if (e) e.stopPropagation();
-    /* Mobile/desktop with Web Share: one-tap system sheet; else compact menu */
+    /* Coarse + Web Share: system sheet only (dismiss must not open desktop menu). */
     if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
-      const ok = await shareSiteNative();
-      if (ok) {
-        closeShareDropdown();
-        return;
-      }
+      await shareSiteNative();
+      closeShareDropdown();
+      return;
     }
     toggleShareDropdown(e);
   }
