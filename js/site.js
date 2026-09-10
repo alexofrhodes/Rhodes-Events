@@ -2275,6 +2275,8 @@
     if (sheet) {
       sheet.classList.remove("is-dragging");
       sheet.style.transform = "";
+      const panel = sheet.querySelector(".detail-panel");
+      if (panel) panel.scrollTop = 0;
     }
     lockDetailPageScroll();
   }
@@ -2284,12 +2286,19 @@
     const detail = $("#detail");
     const sheet = $(".detail-sheet");
     const chrome = sheet?.querySelector("[data-detail-drag]");
+    const panel = sheet?.querySelector(".detail-panel");
     if (!sheet || !chrome) return;
+
+    const DISMISS_PX = 80;
+    const ARM_PX = 8;
 
     let startY = 0;
     let currentY = 0;
     let dragging = false;
     let dragMoved = false;
+    let captureEl = null;
+    let panelArmed = false;
+    let panelDragging = false;
 
     const resetSheet = () => {
       sheet.classList.remove("is-dragging");
@@ -2297,34 +2306,38 @@
       dragging = false;
       currentY = 0;
       dragMoved = false;
+      captureEl = null;
+      panelArmed = false;
+      panelDragging = false;
     };
 
-    const onPointerDown = (e) => {
-      if (e.button !== undefined && e.button !== 0) return;
-      if (e.target.closest(".detail-close")) return;
+    const beginSheetDrag = (e, el) => {
       dragging = true;
       dragMoved = false;
       startY = e.clientY;
       currentY = 0;
+      captureEl = el;
       sheet.classList.add("is-dragging");
-      chrome.setPointerCapture?.(e.pointerId);
+      el.setPointerCapture?.(e.pointerId);
     };
 
-    const onPointerMove = (e) => {
+    const moveSheetDrag = (e) => {
       if (!dragging) return;
       const nextY = Math.max(0, e.clientY - startY);
-      if (nextY > 8) dragMoved = true;
+      if (nextY > ARM_PX) dragMoved = true;
       if (!dragMoved) return;
       currentY = nextY;
       sheet.style.transform = `translateY(${currentY}px)`;
       e.preventDefault();
     };
 
-    const finishDrag = (e) => {
+    const finishSheetDrag = (e) => {
       if (!dragging) return;
       dragging = false;
-      chrome.releasePointerCapture?.(e.pointerId);
-      if (currentY > 80) {
+      captureEl?.releasePointerCapture?.(e.pointerId);
+      const shouldClose = currentY > DISMISS_PX;
+      const moved = dragMoved;
+      if (shouldClose) {
         e.preventDefault();
         e.stopPropagation();
         blockDetailGhostClick();
@@ -2333,14 +2346,80 @@
         closeDetail();
         return;
       }
-      if (dragMoved) blockDetailGhostClick(300);
+      if (moved) blockDetailGhostClick(300);
       resetSheet();
     };
 
-    chrome.addEventListener("pointerdown", onPointerDown);
-    chrome.addEventListener("pointermove", onPointerMove);
-    chrome.addEventListener("pointerup", finishDrag);
+    const interactivePanelTarget = (el) =>
+      !!el?.closest?.(
+        "a, button, input, textarea, select, label, .leaflet-container, .mini-map, [data-close], [role='menu'], [role='menuitem']"
+      );
+
+    chrome.addEventListener("pointerdown", (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      if (e.target.closest(".detail-close")) return;
+      beginSheetDrag(e, chrome);
+    });
+    chrome.addEventListener("pointermove", moveSheetDrag);
+    chrome.addEventListener("pointerup", finishSheetDrag);
     chrome.addEventListener("pointercancel", resetSheet);
+
+    if (panel) {
+      panel.addEventListener("pointerdown", (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        if (interactivePanelTarget(e.target)) return;
+        panelArmed = true;
+        panelDragging = false;
+        startY = e.clientY;
+        currentY = 0;
+        dragMoved = false;
+      });
+
+      panel.addEventListener(
+        "pointermove",
+        (e) => {
+          if (!panelArmed && !panelDragging) return;
+
+          if (panelDragging || dragging) {
+            moveSheetDrag(e);
+            return;
+          }
+
+          const dy = e.clientY - startY;
+          if (panel.scrollTop > 0) {
+            panelArmed = false;
+            return;
+          }
+          if (dy <= ARM_PX) return;
+
+          panelArmed = false;
+          panelDragging = true;
+          beginSheetDrag(e, panel);
+          /* Restart from current finger so first frame matches pull distance. */
+          startY = e.clientY - dy;
+          currentY = Math.max(0, dy);
+          dragMoved = true;
+          sheet.style.transform = `translateY(${currentY}px)`;
+          e.preventDefault();
+        },
+        { passive: false }
+      );
+
+      const endPanel = (e) => {
+        if (panelDragging || dragging) {
+          panelDragging = false;
+          finishSheetDrag(e);
+          return;
+        }
+        panelArmed = false;
+      };
+      panel.addEventListener("pointerup", endPanel);
+      panel.addEventListener("pointercancel", () => {
+        panelArmed = false;
+        panelDragging = false;
+        if (dragging) resetSheet();
+      });
+    }
 
     detail.addEventListener(
       "wheel",
@@ -2355,7 +2434,7 @@
       "touchmove",
       (e) => {
         if ($("#detail").classList.contains("hidden")) return;
-        if (e.target.closest(".detail-panel")) return;
+        if (e.target.closest(".detail-panel") && !panelDragging && !dragging) return;
         e.preventDefault();
       },
       { passive: false }
