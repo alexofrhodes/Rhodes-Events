@@ -65,6 +65,8 @@
     prevView: "cards",
     map: null,
     clusters: null,
+    mapHome: null,
+    mapSelectedId: null,
     miniMap: null,
     calendar: null,
     selected: null,
@@ -1988,13 +1990,29 @@
     }
   }
 
+  function clusterBoundsTiny(bounds, map) {
+    if (!bounds || typeof bounds.isValid !== "function" || !bounds.isValid()) return true;
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    // Stacked venue only — nearby-but-separate places should zoom, not spiderfy.
+    if (map && typeof map.distance === "function") {
+      return map.distance(sw, ne) < 45;
+    }
+    return Math.abs(ne.lat - sw.lat) < 0.0003 && Math.abs(ne.lng - sw.lng) < 0.0003;
+  }
+
   function ensureMap() {
     if (state.map) return;
     if (typeof L === "undefined") return;
     const center = state.data?.center || { lat: 36.451456, lng: 28.2234119, zoom: 12 };
+    state.mapHome = {
+      lat: Number(center.lat),
+      lng: Number(center.lng),
+      zoom: Number(center.zoom) || 12,
+    };
     state.map = L.map("map", { scrollWheelZoom: true }).setView(
-      [center.lat, center.lng],
-      center.zoom || 12
+      [state.mapHome.lat, state.mapHome.lng],
+      state.mapHome.zoom
     );
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
@@ -2002,21 +2020,83 @@
     }).addTo(state.map);
     state.clusters = L.markerClusterGroup({
       showCoverageOnHover: false,
-      maxClusterRadius: 48,
+      maxClusterRadius: 36,
+      spiderfyOnMaxZoom: true,
+      zoomToBoundsOnClick: false,
+      iconCreateFunction(cluster) {
+        const n = cluster.getChildCount();
+        let size = "small";
+        if (n >= 100) size = "large";
+        else if (n >= 10) size = "medium";
+        return L.divIcon({
+          html: `<div><span>${n}</span></div>`,
+          className: `marker-cluster marker-cluster-${size}`,
+          iconSize: L.point(28, 28),
+        });
+      },
+    });
+    state.clusters.on("clusterclick", (e) => {
+      const cluster = e.layer;
+      const map = state.map;
+      // Faded center while spiderfied: click collapses back to the cluster.
+      if (state.clusters._spiderfied === cluster) {
+        cluster.unspiderfy();
+        return;
+      }
+      const bounds = cluster.getBounds();
+      const maxZ = Math.min(18, map.getMaxZoom());
+      if (clusterBoundsTiny(bounds, map) || map.getZoom() >= maxZ) {
+        cluster.spiderfy();
+        return;
+      }
+      // Prefer zoom. fitBounds often no-ops when the group already fits the view —
+      // that used to force spiderfy; nudge +1 zoom instead so nearby venues separate.
+      const zoomBefore = map.getZoom();
+      let wantZoom = zoomBefore + 1;
+      try {
+        wantZoom = Math.max(
+          zoomBefore + 1,
+          Math.min(maxZ, map.getBoundsZoom(bounds.pad(0.2), false))
+        );
+      } catch (_) {
+        /* getBoundsZoom can throw on degenerate bounds */
+      }
+      if (wantZoom > zoomBefore) {
+        map.setView(bounds.getCenter(), Math.min(maxZ, wantZoom));
+        return;
+      }
+      map.fitBounds(bounds.pad(0.25), { maxZoom: maxZ });
     });
     state.map.addLayer(state.clusters);
+    const resetBtn = $("#map-reset");
+    const fitBtn = $("#map-fit");
+    if (resetBtn && !resetBtn.dataset.bound) {
+      resetBtn.dataset.bound = "1";
+      resetBtn.addEventListener("click", resetMapHome);
+    }
+    if (fitBtn && !fitBtn.dataset.bound) {
+      fitBtn.dataset.bound = "1";
+      fitBtn.addEventListener("click", fitMap);
+    }
     renderMarkers();
   }
 
-  function markerIcon(ev) {
+  function resetMapHome() {
+    if (!state.map) return;
+    const home = state.mapHome || state.data?.center || { lat: 36.451456, lng: 28.2234119, zoom: 12 };
+    state.map.setView([Number(home.lat), Number(home.lng)], Number(home.zoom) || 12);
+  }
+
+  function markerIcon(ev, selected) {
     const img = imageUrl(ev, true) || imageUrl(ev, false);
+    const on = selected === true || (selected == null && ev && ev.id === state.mapSelectedId);
     return L.divIcon({
-      className: "",
-      html: `<div class="leaflet-marker-photo" style="${
+      className: "leaflet-marker-photo-wrap" + (on ? " is-selected" : ""),
+      html: `<div class="leaflet-marker-photo${on ? " is-selected" : ""}" style="${
         img ? `background-image:url('${escapeAttr(img)}')` : "background:#0a5c56"
       }"></div>`,
-      iconSize: [44, 44],
-      iconAnchor: [22, 22],
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
     });
   }
 
@@ -2026,10 +2106,22 @@
     state.filtered
       .filter((ev) => ev.lat != null && ev.lng != null)
       .forEach((ev) => {
-        const marker = L.marker([Number(ev.lat), Number(ev.lng)], { icon: markerIcon(ev) });
+        const marker = L.marker([Number(ev.lat), Number(ev.lng)], {
+          icon: markerIcon(ev),
+        });
+        marker._eventRef = ev;
         marker.on("click", () => showMapSheet(ev));
         state.clusters.addLayer(marker);
       });
+  }
+
+  function refreshMapSelectionIcons() {
+    if (!state.clusters) return;
+    state.clusters.eachLayer((marker) => {
+      const ev = marker._eventRef;
+      if (!ev || typeof marker.setIcon !== "function") return;
+      marker.setIcon(markerIcon(ev));
+    });
   }
 
   function fitMap() {
@@ -2041,6 +2133,8 @@
     const sheet = $("#map-sheet");
     const thumb = imageUrl(ev, true) || imageUrl(ev, false);
     const maps = navigateUrl(ev);
+    state.mapSelectedId = ev.id;
+    refreshMapSelectionIcons();
     sheet.classList.remove("hidden");
     sheet.innerHTML = `
       <button type="button" class="map-sheet-close" data-close-sheet aria-label="Close">\u00d7</button>
@@ -2100,6 +2194,8 @@
     if (!sheet) return;
     sheet.classList.add("hidden");
     sheet.innerHTML = "";
+    state.mapSelectedId = null;
+    refreshMapSelectionIcons();
   }
 
   function renderAll() {

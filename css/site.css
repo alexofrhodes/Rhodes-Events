@@ -3552,6 +3552,35 @@ body.cal-mode-day .cal-layout #calendar {
   background: #e7e5e4;
 }
 
+.map-float-controls {
+  position: absolute;
+  top: max(0.65rem, env(safe-area-inset-top, 0px));
+  right: max(0.65rem, env(safe-area-inset-right, 0px));
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.map-float-btn {
+  pointer-events: auto;
+  border: 1px solid var(--line);
+  background: var(--elevated, var(--card));
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.map-float-btn:hover {
+  border-color: var(--teal);
+}
+
 .map-sheet {
   position: absolute;
   left: 0.75rem;
@@ -3623,15 +3652,29 @@ body.cal-mode-day .cal-layout #calendar {
   margin-top: 0;
 }
 
+.leaflet-marker-photo-wrap {
+  background: transparent;
+  border: 0;
+}
+
 .leaflet-marker-photo {
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  background: #e7e5e4 center / cover no-repeat;
-  width: 44px !important;
-  height: 44px !important;
-  margin-left: -22px !important;
-  margin-top: -22px !important;
+  box-shadow: 0 1px 6px rgba(28, 25, 23, 0.28);
+  background-color: #e7e5e4;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transform: translateZ(0);
+}
+
+.leaflet-marker-photo.is-selected,
+.leaflet-marker-photo-wrap.is-selected .leaflet-marker-photo {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.35), 0 1px 6px rgba(28, 25, 23, 0.28);
 }
 
 .detail {
@@ -3945,17 +3988,52 @@ body.detail-open {
   z-index: 1;
 }
 
-.marker-cluster-small,
-.marker-cluster-medium,
-.marker-cluster-large {
-  background-color: rgba(15, 118, 110, 0.25);
+.marker-cluster {
+  background-clip: padding-box;
+  cursor: pointer;
 }
 
-.marker-cluster-small div,
-.marker-cluster-medium div,
-.marker-cluster-large div {
-  background-color: var(--teal);
+.marker-cluster div {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateZ(0);
+  /* Match photo markers (28×28 iconSize); keep outer box as hit target. */
+  width: 24px;
+  height: 24px;
+  margin-left: 2px;
+  margin-top: 2px;
+  border-radius: 50%;
   color: #fff;
+  box-shadow: 0 1px 5px rgba(28, 25, 23, 0.22);
+}
+
+.marker-cluster-small {
+  background-color: rgba(13, 148, 136, 0.22);
+}
+
+.marker-cluster-small div {
+  background-color: #0f766e;
+}
+
+.marker-cluster-medium {
+  background-color: rgba(13, 148, 136, 0.28);
+}
+
+.marker-cluster-medium div {
+  background-color: #0d9488;
+}
+
+.marker-cluster-large {
+  background-color: rgba(15, 118, 110, 0.32);
+}
+
+.marker-cluster-large div {
+  background-color: #0f766e;
 }
 
 /* Month jump popup — outside .top so fixed is viewport-relative (backdrop-filter breaks that) */
