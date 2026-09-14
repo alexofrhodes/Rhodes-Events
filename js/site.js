@@ -1258,8 +1258,7 @@
     const loc = localeTag();
     const day = d.toLocaleDateString(loc, { weekday: "short" });
     const date = d.toLocaleDateString(loc, { day: "numeric", month: "short", year: "numeric" });
-    const time = d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    return `${day} ${date} · ${time}`;
+    return `${day} ${date}`;
   }
 
   function fmtStamp(value) {
@@ -1279,14 +1278,14 @@
     const el = $("#clock-now");
     if (!el) return;
     const now = new Date();
-    el.dateTime = now.toISOString();
+    el.dateTime = now.toISOString().slice(0, 10);
     el.textContent = fmtClock(now);
   }
 
   function startClock() {
     tickClock();
     if (state._clockTimer) clearInterval(state._clockTimer);
-    state._clockTimer = setInterval(tickClock, 1000);
+    state._clockTimer = setInterval(tickClock, 60_000);
   }
 
   function renderUpdateInfo() {
@@ -2371,7 +2370,7 @@
     if (sheet) {
       sheet.classList.remove("is-dragging");
       sheet.style.transform = "";
-      const panel = sheet.querySelector(".detail-panel");
+      const panel = sheet.querySelector(".detail-scroll") || sheet.querySelector(".detail-panel");
       if (panel) panel.scrollTop = 0;
     }
     lockDetailPageScroll();
@@ -2382,7 +2381,7 @@
     const detail = $("#detail");
     const sheet = $(".detail-sheet");
     const chrome = sheet?.querySelector("[data-detail-drag]");
-    const panel = sheet?.querySelector(".detail-panel");
+    const panel = sheet?.querySelector(".detail-scroll") || sheet?.querySelector(".detail-panel");
     if (!sheet || !chrome) return;
 
     const DISMISS_PX = 80;

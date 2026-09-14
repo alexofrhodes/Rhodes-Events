@@ -1472,6 +1472,36 @@ body.view-posters .month-nav-head {
   font-size: 0.72rem !important;
 }
 
+.about-qr {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.about-qr-caption {
+  margin: 0 0 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.about-qr img {
+  display: inline-block;
+  width: 96px;
+  height: 96px;
+  border-radius: 6px;
+  background: #fff;
+}
+
+@media print {
+  .about-qr {
+    display: none !important;
+  }
+}
+
 @media print {
   :root,
   [data-theme="dark"],
@@ -3747,14 +3777,45 @@ body.detail-open {
 }
 
 .detail-panel {
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--elevated);
+  border-radius: 0;
+}
+
+.detail-scroll {
   overflow: auto;
   flex: 1 1 auto;
   min-height: 0;
-  background: var(--elevated);
-  border-radius: 0;
   overscroll-behavior: contain;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
+}
+
+.detail-sticky-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.65rem 0.85rem calc(0.65rem + env(safe-area-inset-bottom, 0));
+  border-top: 1px solid var(--line);
+  background: var(--elevated);
+}
+
+.detail-sticky-actions .navigate-btn {
+  margin: 0;
+}
+
+.detail-sticky-actions .share-row {
+  flex: 1 1 100%;
+}
+
+.detail-sticky-star {
+  flex: 0 0 auto;
 }
 
 .detail-close {

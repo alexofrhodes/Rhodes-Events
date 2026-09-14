@@ -312,12 +312,12 @@
         <button type="button" class="detail-close" data-close aria-label="Close">×</button>
       </div>
       <article class="detail-panel">
+        <div class="detail-scroll">
         <button type="button" id="detail-hero" class="detail-hero" aria-label="View full image"></button>
         <div class="detail-body">
         <p id="detail-cats" class="chips detail-chips"></p>
         <div class="detail-title-row">
           <h2 id="detail-title"></h2>
-          <button type="button" id="detail-star" class="star-btn" aria-label="Star event">☆</button>
         </div>
         <p id="detail-when" class="meta"></p>
         <p id="detail-where" class="meta"></p>
@@ -325,8 +325,11 @@
         <p id="detail-artist" class="meta hidden"></p>
         <div id="detail-notes" class="notes"></div>
         <div id="detail-mini-map" class="mini-map hidden"></div>
-        <a id="btn-navigate" class="btn secondary navigate-btn hidden" target="_blank" rel="noopener">Navigate</a>
-        <div class="actions">
+        </div>
+        </div>
+        <div class="detail-sticky-actions" aria-label="Event actions">
+          <button type="button" id="detail-star" class="star-btn detail-sticky-star" aria-label="Star event">☆</button>
+          <a id="btn-navigate" class="btn secondary navigate-btn hidden" target="_blank" rel="noopener">Directions</a>
           <div class="cal-menu-wrap">
             <button type="button" id="btn-cal" class="btn primary" aria-haspopup="true" aria-expanded="false">Calendar</button>
             <div id="cal-menu" class="cal-menu hidden" role="menu">
@@ -335,14 +338,13 @@
             </div>
           </div>
           <button type="button" id="btn-share" class="btn secondary">Share</button>
-        </div>
-        <div id="share-row" class="share-row hidden">
-          <button type="button" data-share="copy" class="btn ghost">Copy link</button>
-          <a data-share="whatsapp" class="btn ghost" target="_blank" rel="noopener">WhatsApp</a>
-          <a data-share="facebook" class="btn ghost" target="_blank" rel="noopener">Facebook</a>
-          <a data-share="x" class="btn ghost" target="_blank" rel="noopener">X</a>
-          <a data-share="mail" class="btn ghost">Mail</a>
-        </div>
+          <div id="share-row" class="share-row hidden">
+            <button type="button" data-share="copy" class="btn ghost">Copy link</button>
+            <a data-share="whatsapp" class="btn ghost" target="_blank" rel="noopener">WhatsApp</a>
+            <a data-share="facebook" class="btn ghost" target="_blank" rel="noopener">Facebook</a>
+            <a data-share="x" class="btn ghost" target="_blank" rel="noopener">X</a>
+            <a data-share="mail" class="btn ghost">Mail</a>
+          </div>
         </div>
       </article>
     </div>
@@ -382,6 +384,10 @@
         </div>
       </div>
       <p class="muted about-note">Stars stay in this browser only.</p>
+      <div class="about-qr">
+        <p class="about-qr-caption">Scan to open site</p>
+        <img src="icons/site-qr.png" width="96" height="96" alt="QR code for this site" />
+      </div>
     </div>
   </div>
 
