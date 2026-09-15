@@ -2352,7 +2352,8 @@
       notesEl.textContent = "";
       notesEl.classList.add("hidden");
     }
-    $("#share-row").classList.add("hidden");
+    $("#share-menu")?.classList.add("hidden");
+    $("#btn-share")?.setAttribute("aria-expanded", "false");
     $("#btn-gcal").href = googleCalUrl(ev);
     const hasCoords = ev.lat != null && ev.lng != null;
     $("#detail-map-hint").classList.toggle("hidden", hasCoords || !ev.location);
@@ -2384,7 +2385,8 @@
     const panel = sheet?.querySelector(".detail-scroll") || sheet?.querySelector(".detail-panel");
     if (!sheet || !chrome) return;
 
-    const DISMISS_PX = 80;
+    /* Dismiss when pulled past this fraction of the viewport height (was 80px). */
+    const DISMISS_RATIO = 0.5;
     const ARM_PX = 8;
 
     let startY = 0;
@@ -2430,7 +2432,7 @@
       if (!dragging) return;
       dragging = false;
       captureEl?.releasePointerCapture?.(e.pointerId);
-      const shouldClose = currentY > DISMISS_PX;
+      const shouldClose = currentY > window.innerHeight * DISMISS_RATIO;
       const moved = dragMoved;
       if (shouldClose) {
         e.preventDefault();
@@ -2706,31 +2708,48 @@
     return `${base}#e=${encodeURIComponent(ev.id)}`;
   }
 
+  function fillShareMenuLinks(ev, menu) {
+    if (!menu || !ev) return;
+    const url = eventShareUrl(ev);
+    const title = ev.title || "Event";
+    const text = `${title}\n${fmtWhen(ev)}${ev.location ? `\n${ev.location}` : ""}`;
+    const wa = menu.querySelector('[data-share="whatsapp"]');
+    if (wa) wa.href = `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`;
+    const fb = menu.querySelector('[data-share="facebook"]');
+    if (fb) fb.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    const x = menu.querySelector('[data-share="x"]');
+    if (x) x.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
+    const mail = menu.querySelector('[data-share="mail"]');
+    if (mail) mail.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${text}\n${url}`)}`;
+  }
+
   async function shareEvent(ev, shareHost) {
     const url = eventShareUrl(ev);
     const title = ev.title || "Event";
     const text = `${title}\n${fmtWhen(ev)}${ev.location ? `\n${ev.location}` : ""}`;
-    if (navigator.share) {
+    /* Touch: system share sheet. Desktop/fine pointer: calendar-style popup. */
+    if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
       try {
         await navigator.share({ title, text, url });
       } catch (_) {
-        /* cancel or error — do not open fallback row */
+        /* cancel or error */
       }
       return;
     }
-    const row = shareHost || $("#share-row");
-    if (!row) return;
-    row.classList.remove("hidden");
-    row.querySelector('[data-share="whatsapp"]').href =
-      `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`;
-    row.querySelector('[data-share="facebook"]').href =
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-    row.querySelector('[data-share="x"]').href =
-      `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
-    const mail = row.querySelector('[data-share="mail"]');
-    if (mail) {
-      mail.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${text}\n${url}`)}`;
+    const menu = shareHost || $("#share-menu");
+    if (!menu) return;
+    fillShareMenuLinks(ev, menu);
+    /* Legacy map sheet row: just reveal inline links */
+    if (menu.classList.contains("share-row")) {
+      menu.classList.toggle("hidden");
+      return;
     }
+    const btn = menu.closest(".cal-menu-wrap")?.querySelector("[aria-haspopup]") || $("#btn-share");
+    if (!btn) return;
+    const open = menu.classList.contains("hidden");
+    closeCalMenus(open ? menu : null);
+    menu.classList.toggle("hidden", !open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
   }
 
   function closeCalMenus(except) {
@@ -3763,23 +3782,31 @@
     $$("[data-close]").forEach((el) => el.addEventListener("click", closeDetail));
     bindDetailDrawer();
     bindCalMenu($("#btn-cal"), $("#cal-menu"), () => state.selected && downloadIcs(state.selected));
-    $("#btn-share").addEventListener("click", () => state.selected && shareEvent(state.selected));
+    $("#btn-share").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (state.selected) shareEvent(state.selected);
+    });
     document.addEventListener("click", (e) => {
       if (!e.target.closest(".cal-menu-wrap")) closeCalMenus();
     });
-    $('[data-share="copy"]').addEventListener("click", async () => {
+    $("#share-menu")?.querySelector('[data-share="copy"]')?.addEventListener("click", async () => {
       if (!state.selected) return;
       const url = eventShareUrl(state.selected);
+      const copyBtn = $("#share-menu")?.querySelector('[data-share="copy"]');
       try {
         await navigator.clipboard.writeText(url);
-        $('[data-share="copy"]').textContent = "Copied";
+        if (copyBtn) copyBtn.textContent = "Copied";
         setTimeout(() => {
-          $('[data-share="copy"]').textContent = "Copy link";
+          if (copyBtn) copyBtn.textContent = "Copy link";
         }, 1200);
       } catch (_) {
         prompt("Copy this link", url);
       }
+      closeCalMenus();
     });
+    $("#share-menu")?.querySelectorAll("a.cal-menu-item").forEach((a) =>
+      a.addEventListener("click", () => closeCalMenus())
+    );
     const scrollTopBtn = $("#scroll-top");
     let scrollIdle;
     const onScroll = () => {

@@ -450,7 +450,8 @@ body {
   border-radius: 999px;
   padding: 0 2.1rem 0 0.6rem;
   font: inherit;
-  font-size: 0.78rem;
+  /* ≥16px: iOS Safari zooms focused inputs smaller than this */
+  font-size: 16px;
   color: var(--ink);
 }
 
@@ -746,7 +747,7 @@ body {
   border-radius: 8px;
   padding: 0.35rem 1.6rem 0.35rem 0.5rem;
   font: inherit;
-  font-size: 0.8rem;
+  font-size: 16px;
   background: var(--card);
   color: var(--ink);
 }
@@ -2171,6 +2172,8 @@ body.view-rails main {
 .rails-toolbar {
   padding: 0 0.25rem 0.5rem;
   flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
 }
 
 .rails-modes {
@@ -2480,7 +2483,7 @@ button.rails-day-head {
   padding: 0 0.15rem 0.35rem;
   flex: 0 0 auto;
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .cal-modes {
@@ -3521,19 +3524,27 @@ body.cal-mode-day .cal-layout #calendar {
 }
 
 .star-btn {
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 999px;
   color: var(--star-off);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
-  padding: 0.15rem;
-  width: 1.7rem;
-  height: 1.7rem;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  box-sizing: border-box;
 }
 
 .star-btn[aria-pressed="true"] {
   color: var(--star);
+  border-color: color-mix(in srgb, var(--star) 45%, var(--line));
+  background: color-mix(in srgb, var(--star) 12%, var(--card));
 }
 
 .event-card > .star-btn {
@@ -3541,8 +3552,8 @@ body.cal-mode-day .cal-layout #calendar {
   top: 0.35rem;
   right: 0.35rem;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.88);
-  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(28, 25, 23, 0.12);
 }
 
 .detail-title-row {
@@ -3558,7 +3569,6 @@ body.cal-mode-day .cal-layout #calendar {
 .detail-title-row .star-btn {
   flex: 0 0 auto;
   margin-top: 0.15rem;
-  font-size: 1.35rem;
 }
 
 .empty {
@@ -3758,7 +3768,8 @@ body.detail-open {
   background: var(--elevated);
   border-radius: 24px 24px 0 0;
   border-top: 1px solid var(--line);
-  padding-top: 0.45rem;
+  padding-top: 0.55rem;
+  padding-bottom: 0.2rem;
   cursor: grab;
   touch-action: none;
 }
@@ -3768,9 +3779,9 @@ body.detail-open {
 }
 
 .detail-grabber {
-  width: 2.75rem;
-  height: 0.28rem;
-  margin: 0 auto 0.35rem;
+  width: 5.25rem;
+  height: 0.34rem;
+  margin: 0 auto 0.45rem;
   border-radius: 999px;
   background: var(--muted);
   opacity: 0.55;
@@ -3784,6 +3795,11 @@ body.detail-open {
   flex-direction: column;
   background: var(--elevated);
   border-radius: 0;
+}
+
+/* Sticky bar menus open upward into the scroll area — allow paint over it */
+.detail-panel > .detail-sticky-actions {
+  overflow: visible;
 }
 
 .detail-scroll {
@@ -3801,21 +3817,52 @@ body.detail-open {
   flex-wrap: wrap;
   gap: 0.45rem;
   align-items: center;
-  padding: 0.65rem 0.85rem calc(0.65rem + env(safe-area-inset-bottom, 0));
+  justify-content: center;
+  /* Extra bottom pad: home indicator + floating browser/OS nav bars */
+  padding: 0.65rem 0.85rem calc(1.15rem + env(safe-area-inset-bottom, 0px) + 0.5rem);
   border-top: 1px solid var(--line);
   background: var(--elevated);
+  overflow: visible;
+  position: relative;
+  z-index: 5;
 }
 
 .detail-sticky-actions .navigate-btn {
   margin: 0;
 }
 
-.detail-sticky-actions .share-row {
-  flex: 1 1 100%;
+.detail-sticky-actions .icon-btn {
+  width: 2.35rem;
+  height: 2.35rem;
+  text-decoration: none;
+}
+
+.detail-sticky-actions .cal-menu {
+  top: auto;
+  bottom: calc(100% + 0.4rem);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  z-index: 30;
 }
 
 .detail-sticky-star {
   flex: 0 0 auto;
+  width: 2.35rem;
+  height: 2.35rem;
+  font-size: 1.15rem;
+}
+
+.icon-btn-primary {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+.icon-btn-primary:hover {
+  background: var(--teal-dark);
+  border-color: var(--teal-dark);
+  color: #fff;
 }
 
 .detail-close {
@@ -3850,7 +3897,7 @@ body.detail-open {
 
 .navigate-btn {
   display: inline-flex;
-  margin: 0 0 0.85rem;
+  margin: 0;
 }
 
 .lightbox {
