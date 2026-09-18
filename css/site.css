@@ -3966,9 +3966,60 @@ body.detail-open {
 
 .notes {
   margin: 0.85rem 0;
-  white-space: pre-wrap;
   color: var(--ink);
   font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.notes p {
+  margin: 0 0 0.65em;
+}
+
+.notes p:last-child {
+  margin-bottom: 0;
+}
+
+.notes h2,
+.notes h3,
+.notes h4 {
+  margin: 0.85em 0 0.35em;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.notes h2:first-child,
+.notes h3:first-child,
+.notes h4:first-child {
+  margin-top: 0;
+}
+
+.notes h3 {
+  font-size: 1rem;
+}
+
+.notes h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.notes ul,
+.notes ol {
+  margin: 0.35em 0 0.65em;
+  padding-left: 1.25em;
+}
+
+.notes li {
+  margin: 0.2em 0;
+}
+
+.notes strong {
+  font-weight: 700;
+}
+
+.notes em {
+  font-style: italic;
 }
 
 .notes a {

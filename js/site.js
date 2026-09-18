@@ -2798,16 +2798,29 @@
     return "";
   }
 
-  /** Escape HTML, then linkify [label](url) and plain http(s)/www URLs. */
-  function formatNotesHtml(text) {
-    let html = escapeHtml((text || "").trim());
-    if (!html) return "";
-    html = html.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) => {
+  function unwrapMarkdownFence(text) {
+    const raw = String(text || "").trim();
+    const m = raw.match(/^```(?:markdown|md)?\s*\r?\n([\s\S]*?)\r?\n```$/i);
+    return m ? m[1].trim() : raw;
+  }
+
+  function applyNotesEmphasis(html) {
+    let out = html;
+    out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    out = out.replace(/__(.+?)__/g, "<strong>$1</strong>");
+    out = out.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>");
+    out = out.replace(/(^|[^A-Za-z0-9_])_([^_\n]+?)_(?![A-Za-z0-9_])/g, "$1<em>$2</em>");
+    return out;
+  }
+
+  function linkifyNotesHtml(html) {
+    let out = html;
+    out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) => {
       const href = safeNoteHref(url);
       if (!href) return `[${label}](${url})`;
       return `<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
     });
-    html = html.replace(
+    out = out.replace(
       /(^|[\s(])((?:https?:\/\/|www\.)[^\s<]+[^\s.,;:!?)\]'\"<])/gi,
       (match, prefix, url) => {
         const href = safeNoteHref(url);
@@ -2815,7 +2828,66 @@
         return `${prefix}<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${url}</a>`;
       }
     );
-    return html;
+    return out;
+  }
+
+  function isNotesBlockStart(line) {
+    return /^(#{1,3})\s+/.test(line) || /^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line);
+  }
+
+  /** Escape first, then basic MD blocks/emphasis + linkify. */
+  function formatNotesBlocks(escaped) {
+    const lines = String(escaped || "").split(/\r?\n/);
+    const parts = [];
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) {
+        i += 1;
+        continue;
+      }
+      const heading = line.match(/^(#{1,3})\s+(.+)$/);
+      if (heading) {
+        const level = heading[1].length + 1;
+        parts.push(`<h${level}>${heading[2]}</h${level}>`);
+        i += 1;
+        continue;
+      }
+      if (/^[-*]\s+/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
+          items.push(lines[i].replace(/^[-*]\s+/, ""));
+          i += 1;
+        }
+        parts.push(`<ul>${items.map((t) => `<li>${t}</li>`).join("")}</ul>`);
+        continue;
+      }
+      if (/^\d+\.\s+/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+          items.push(lines[i].replace(/^\d+\.\s+/, ""));
+          i += 1;
+        }
+        parts.push(`<ol>${items.map((t) => `<li>${t}</li>`).join("")}</ol>`);
+        continue;
+      }
+      const para = [];
+      while (i < lines.length && lines[i].trim() && !isNotesBlockStart(lines[i])) {
+        para.push(lines[i]);
+        i += 1;
+      }
+      parts.push(`<p>${para.join("<br>")}</p>`);
+    }
+    return parts.join("");
+  }
+
+  function formatNotesHtml(text) {
+    const raw = unwrapMarkdownFence(text);
+    let html = escapeHtml(raw);
+    if (!html) return "";
+    html = formatNotesBlocks(html);
+    html = applyNotesEmphasis(html);
+    return linkifyNotesHtml(html);
   }
 
   function escapeAttr(value) {
@@ -2984,11 +3056,12 @@
       .map((ev) => {
         const thumb = imageUrl(ev, true) || imageUrl(ev, false);
         const notes = (ev.notes || "").trim().slice(0, 280);
+        const notesHtml = notes ? formatNotesHtml(notes) : "";
         return `<article class="print-day-card">${
           thumb ? `<img src="${escapeAttr(thumb)}" alt="" />` : ""
         }<div><h3>${escapeHtml(ev.title || "Untitled")}</h3><p class="meta">${escapeHtml(fmtWhen(ev))}${
           ev.location ? ` · ${escapeHtml(ev.location)}` : ""
-        }</p>${notes ? `<p class="notes">${escapeHtml(notes)}</p>` : ""}</div></article>`;
+        }</p>${notesHtml ? `<div class="notes">${notesHtml}</div>` : ""}</div></article>`;
       })
       .join("");
     return `<h1>Day — ${escapeHtml(title)}</h1>${cards || '<p class="print-empty">No events this day.</p>'}`;
