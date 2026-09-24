@@ -147,6 +147,18 @@
         <div class="hscroll-fade hscroll-fade-end hidden" data-hscroll-fade="end" aria-hidden="true"></div>
       </div>
     </div>
+    <div class="view-subrails" id="view-subrails">
+      <div class="rails-modes" role="tablist" aria-label="Rails layout">
+        <button type="button" class="rails-mode-btn active" data-rails-layout="days" aria-selected="true">Days</button>
+        <button type="button" class="rails-mode-btn" data-rails-layout="cards" aria-selected="false">Cards</button>
+      </div>
+      <div class="cal-modes" role="tablist" aria-label="Calendar layout">
+        <button type="button" class="cal-mode-btn active" data-cal-mode="month" aria-selected="true">Month</button>
+        <button type="button" class="cal-mode-btn" data-cal-mode="week" aria-selected="false">Week</button>
+        <button type="button" class="cal-mode-btn" data-cal-mode="day" aria-selected="false">Day</button>
+        <button type="button" class="cal-mode-btn" data-cal-mode="agenda" aria-selected="false">Agenda</button>
+      </div>
+    </div>
     <input id="date-from" type="hidden" aria-label="From date" />
     <input id="date-to" type="hidden" aria-label="To date" />
     <div class="section-head month-nav-head" id="month-nav">
@@ -236,12 +248,6 @@
     </section>
 
     <section id="view-rails" class="view" aria-label="Timeline rails" hidden>
-      <div class="rails-toolbar">
-        <div class="rails-modes" role="tablist" aria-label="Rails layout">
-          <button type="button" class="rails-mode-btn active" data-rails-layout="days" aria-selected="true">Days</button>
-          <button type="button" class="rails-mode-btn" data-rails-layout="cards" aria-selected="false">Cards</button>
-        </div>
-      </div>
       <div class="rails-wrap">
         <div id="rails-fade-start" class="rails-fade rails-fade-start hidden" aria-hidden="true"></div>
         <div id="rails-scroll" class="rails-scroll" tabindex="0">
@@ -262,14 +268,6 @@
     </section>
 
     <section id="view-calendar" class="view" aria-label="Calendar" hidden>
-      <div class="cal-toolbar">
-        <div class="cal-modes" role="tablist" aria-label="Calendar layout">
-          <button type="button" class="cal-mode-btn active" data-cal-mode="month" aria-selected="true">Month</button>
-          <button type="button" class="cal-mode-btn" data-cal-mode="week" aria-selected="false">Week</button>
-          <button type="button" class="cal-mode-btn" data-cal-mode="day" aria-selected="false">Day</button>
-          <button type="button" class="cal-mode-btn" data-cal-mode="agenda" aria-selected="false">Agenda</button>
-        </div>
-      </div>
       <div class="cal-layout">
         <div class="cal-main">
           <div class="cal-nav-bar" id="cal-nav-bar"></div>
