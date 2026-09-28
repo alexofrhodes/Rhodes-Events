@@ -638,6 +638,62 @@
     return !ev.time;
   }
 
+  const RECUR_LABELS = { 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 7: "Sun" };
+  const ICS_BYDAY = { 1: "MO", 2: "TU", 3: "WE", 4: "TH", 5: "FR", 6: "SA", 7: "SU" };
+
+  function normalizeRecurWeekdays(raw) {
+    if (!Array.isArray(raw)) return [];
+    const seen = new Set();
+    const out = [];
+    for (const item of raw) {
+      const code = Number(item);
+      if (!Number.isInteger(code) || code < 1 || code > 7 || seen.has(code)) continue;
+      seen.add(code);
+      out.push(code);
+    }
+    return out.sort((a, b) => a - b);
+  }
+
+  function formatRecurWeekdays(ev) {
+    return normalizeRecurWeekdays(ev && ev.recurWeekdays)
+      .map((c) => RECUR_LABELS[c])
+      .join(", ");
+  }
+
+  function eventOccursOn(ev, iso) {
+    if (!iso || !eventStart(ev)) return false;
+    if (eventStart(ev) > iso || eventEnd(ev) < iso) return false;
+    if (!isMultiDay(ev)) return true;
+    const days = normalizeRecurWeekdays(ev.recurWeekdays);
+    if (!days.length) return true;
+    const d = parseISO(iso);
+    if (!d) return false;
+    const isoDow = ((d.getDay() + 6) % 7) + 1; // Mon=1 … Sun=7
+    return days.includes(isoDow);
+  }
+
+  /** Group events under every day they occur (weekday filter when set). */
+  function groupEventsByOccurrenceDay(events) {
+    const grouped = new Map();
+    (events || []).forEach((ev) => {
+      const start = eventStart(ev);
+      const end = eventEnd(ev);
+      if (!start) return;
+      let d = parseISO(start);
+      const last = parseISO(end) || d;
+      if (!d || !last) return;
+      while (d <= last) {
+        const iso = isoDate(d);
+        if (eventOccursOn(ev, iso)) {
+          if (!grouped.has(iso)) grouped.set(iso, []);
+          grouped.get(iso).push(ev);
+        }
+        d = addDays(d, 1);
+      }
+    });
+    return grouped;
+  }
+
   function overlapsCustomRange(ev) {
     const start = eventStart(ev);
     const end = eventEnd(ev);
@@ -656,6 +712,8 @@
       const end = parseISO(ev.endDate);
       if (end) text += ` – ${end.toLocaleDateString(undefined, opts)}`;
     }
+    const recur = formatRecurWeekdays(ev);
+    if (recur) text += ` · ${recur}`;
     if (ev.time) text += ` · ${ev.time}`;
     return text;
   }
@@ -1440,7 +1498,7 @@
     railsDayKeys().forEach((day) => byDay.set(day, []));
     events.forEach((ev) => {
       railsDayKeys().forEach((day) => {
-        if (eventStart(ev) <= day && eventEnd(ev) >= day) byDay.get(day).push(ev);
+        if (eventOccursOn(ev, day)) byDay.get(day).push(ev);
       });
     });
     let total = 0;
@@ -1709,13 +1767,7 @@
     const host = $("#cal-agenda-full");
     if (!host) return;
     host.innerHTML = "";
-    const grouped = new Map();
-    state.filtered.forEach((ev) => {
-      const start = eventStart(ev);
-      if (!start) return;
-      if (!grouped.has(start)) grouped.set(start, []);
-      grouped.get(start).push(ev);
-    });
+    const grouped = groupEventsByOccurrenceDay(state.filtered);
     const days = [...grouped.keys()].sort();
     if (!days.length) {
       const empty = document.createElement("p");
@@ -1743,9 +1795,7 @@
   }
 
   function eventsOnDay(iso) {
-    return state.filtered
-      .filter((ev) => eventStart(ev) && eventStart(ev) <= iso && eventEnd(ev) >= iso)
-      .sort(sortSoonest);
+    return state.filtered.filter((ev) => eventOccursOn(ev, iso)).sort(sortSoonest);
   }
 
   function selectAgendaDay(iso) {
@@ -2621,6 +2671,16 @@
     return `${compact}T${hh}${mm}00`;
   }
 
+  function weeklyRrule(ev) {
+    const days = normalizeRecurWeekdays(ev.recurWeekdays);
+    if (!days.length || !isMultiDay(ev)) return "";
+    const byday = days.map((c) => ICS_BYDAY[c]).join(",");
+    const untilDay = (ev.endDate || ev.date || "").replace(/-/g, "");
+    if (!untilDay) return "";
+    const until = ev.time ? `${untilDay}T205959Z` : `${untilDay}T235959Z`;
+    return `RRULE:FREQ=WEEKLY;BYDAY=${byday};UNTIL=${until}`;
+  }
+
   function icsBody(ev) {
     const timed = Boolean(ev.time);
     const stamp = new Date()
@@ -2632,6 +2692,9 @@
     const desc = escapeIcs((ev.notes || "").replace(/\r?\n/g, "\\n"));
     const loc = escapeIcs(ev.location || "");
     const url = ev.url ? `URL:${ev.url}\r\n` : "";
+    const rrule = weeklyRrule(ev);
+    // Weekly series: single-day DTSTART/DTEND + RRULE (not continuous span).
+    const seriesEv = rrule ? { ...ev, endDate: "" } : ev;
     if (timed) {
       return [
         "BEGIN:VCALENDAR",
@@ -2641,8 +2704,9 @@
         "BEGIN:VEVENT",
         `UID:${uid}`,
         `DTSTAMP:${stamp}`,
-        `DTSTART:${icsDate(ev, false)}`,
-        `DTEND:${icsDate({ ...ev, time: bumpHour(ev.time) }, false)}`,
+        `DTSTART:${icsDate(seriesEv, false)}`,
+        `DTEND:${icsDate({ ...seriesEv, time: bumpHour(seriesEv.time) }, false)}`,
+        rrule,
         `SUMMARY:${summary}`,
         `DESCRIPTION:${desc}`,
         `LOCATION:${loc}`,
@@ -2661,8 +2725,9 @@
       "BEGIN:VEVENT",
       `UID:${uid}`,
       `DTSTAMP:${stamp}`,
-      `DTSTART;VALUE=DATE:${icsDate(ev, false)}`,
-      `DTEND;VALUE=DATE:${icsDate(ev, true)}`,
+      `DTSTART;VALUE=DATE:${icsDate(seriesEv, false)}`,
+      `DTEND;VALUE=DATE:${icsDate(seriesEv, true)}`,
+      rrule,
       `SUMMARY:${summary}`,
       `DESCRIPTION:${desc}`,
       `LOCATION:${loc}`,
@@ -3012,7 +3077,7 @@
     for (let i = 0; i < startPad; i++) cells += '<div class="print-cal-cell empty"></div>';
     for (let day = 1; day <= daysInMonth; day++) {
       const iso = `${key}-${String(day).padStart(2, "0")}`;
-      const dayEvents = events.filter((ev) => eventStart(ev) <= iso && eventEnd(ev) >= iso);
+      const dayEvents = events.filter((ev) => eventOccursOn(ev, iso));
       cells += `<div class="print-cal-cell"><div class="print-cal-daynum">${day}</div>${dayEvents
         .map((ev) => printChipHtml(ev, 14))
         .join("")}</div>`;
@@ -3068,13 +3133,7 @@
   }
 
   function buildPrintAgendaHtml() {
-    const grouped = new Map();
-    state.filtered.forEach((ev) => {
-      const start = eventStart(ev);
-      if (!start) return;
-      if (!grouped.has(start)) grouped.set(start, []);
-      grouped.get(start).push(ev);
-    });
+    const grouped = groupEventsByOccurrenceDay(state.filtered);
     const days = [...grouped.keys()].sort();
     if (!days.length) return `<h1>Agenda</h1><p class="print-empty">No upcoming events.</p>`;
 
