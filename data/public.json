@@ -1,6 +1,6 @@
 {
   "title": "Events",
-  "generated": "2026-09-28T13:54:06",
+  "generated": "2026-09-28T14:25:12",
   "center": {
     "lat": 36.451456,
     "lng": 28.2234119,
@@ -396,7 +396,9 @@
       "date": "2026-08-12",
       "endDate": "2026-10-31",
       "time": "",
-      "recurWeekdays": [],
+      "recurWeekdays": [
+        3
+      ],
       "location": "Flou Café-Pub",
       "locationOriginal": "Flou Café-Pub",
       "locationTranslated": "Flou Café-Pub",
