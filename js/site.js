@@ -672,8 +672,9 @@
     return days.includes(isoDow);
   }
 
-  /** Group events under every day they occur (weekday filter when set). */
-  function groupEventsByOccurrenceDay(events) {
+  /** Group events under every day they occur (weekday filter when set).
+   *  Optional from/to ISO strings clip listed days (inclusive). */
+  function groupEventsByOccurrenceDay(events, { from = "", to = "" } = {}) {
     const grouped = new Map();
     (events || []).forEach((ev) => {
       const start = eventStart(ev);
@@ -684,6 +685,11 @@
       if (!d || !last) return;
       while (d <= last) {
         const iso = isoDate(d);
+        if (from && iso < from) {
+          d = addDays(d, 1);
+          continue;
+        }
+        if (to && iso > to) break;
         if (eventOccursOn(ev, iso)) {
           if (!grouped.has(iso)) grouped.set(iso, []);
           grouped.get(iso).push(ev);
@@ -692,6 +698,15 @@
       }
     });
     return grouped;
+  }
+
+  /** Agenda day floor: explicit From filter, else today (hide unfiltered past days). */
+  function agendaDayFloor() {
+    return state.dateFrom || todayISO();
+  }
+
+  function agendaDayCeil() {
+    return state.dateTo || "";
   }
 
   function overlapsCustomRange(ev) {
@@ -1634,6 +1649,7 @@
     if (agendaFull) agendaFull.classList.toggle("hidden", mode !== "agenda");
     if (dayAgenda) dayAgenda.classList.toggle("hidden", mode !== "month");
     if (mode === "agenda") {
+      renderCalAgendaNav();
       renderCalAgendaFull();
     } else {
       renderCustomCalendar();
@@ -1681,6 +1697,16 @@
     const today = todayISO();
     state.agendaDay = today;
     setFocusMonth(today.slice(0, 7), true);
+    if (state.calMode === "agenda") {
+      state.dateFrom = today;
+      state.dateTo = "";
+      const fromEl = $("#date-from");
+      const toEl = $("#date-to");
+      if (fromEl) fromEl.value = state.dateFrom;
+      if (toEl) toEl.value = state.dateTo;
+      applyFilters();
+      return;
+    }
     renderCustomCalendar();
   }
 
@@ -1714,6 +1740,30 @@
     title.className = "cal-nav-title";
     title.textContent = titleText;
     if (openMonthPicker) title.addEventListener("click", openMonthPopup);
+    nav.appendChild(left);
+    nav.appendChild(title);
+  }
+
+  function renderCalAgendaNav() {
+    const nav = $("#cal-nav-bar");
+    if (!nav) return;
+    nav.innerHTML = "";
+    const left = document.createElement("div");
+    left.className = "cal-nav-left";
+    const mkBtn = (label, cls, onClick) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = cls;
+      b.textContent = label;
+      b.addEventListener("click", onClick);
+      return b;
+    };
+    left.appendChild(mkBtn("Today", "cal-nav-today", goCalToday));
+    const title = document.createElement("button");
+    title.type = "button";
+    title.className = "cal-nav-title";
+    title.textContent = "Agenda";
+    title.addEventListener("click", openRangePopup);
     nav.appendChild(left);
     nav.appendChild(title);
   }
@@ -1767,7 +1817,10 @@
     const host = $("#cal-agenda-full");
     if (!host) return;
     host.innerHTML = "";
-    const grouped = groupEventsByOccurrenceDay(state.filtered);
+    const grouped = groupEventsByOccurrenceDay(state.filtered, {
+      from: agendaDayFloor(),
+      to: agendaDayCeil(),
+    });
     const days = [...grouped.keys()].sort();
     if (!days.length) {
       const empty = document.createElement("p");
@@ -1977,7 +2030,7 @@
         month: "short",
         day: "numeric",
       })} – ${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
-      renderCalNav(title, false);
+      renderCalNav(title, true);
       renderWeekBoard(el);
     } else {
       renderCalNav(
@@ -1987,7 +2040,7 @@
           day: "numeric",
           year: "numeric",
         }),
-        false
+        true
       );
       renderDayBoard(el);
     }
@@ -2004,8 +2057,12 @@
 
   function syncCalendar() {
     if (state.view !== "calendar" || !state.calendar) return;
-    if (state.calMode === "agenda") renderCalAgendaFull();
-    else renderCustomCalendar();
+    if (state.calMode === "agenda") {
+      renderCalAgendaNav();
+      renderCalAgendaFull();
+    } else {
+      renderCustomCalendar();
+    }
   }
 
   function renderPosters() {
@@ -3133,7 +3190,10 @@
   }
 
   function buildPrintAgendaHtml() {
-    const grouped = groupEventsByOccurrenceDay(state.filtered);
+    const grouped = groupEventsByOccurrenceDay(state.filtered, {
+      from: agendaDayFloor(),
+      to: agendaDayCeil(),
+    });
     const days = [...grouped.keys()].sort();
     if (!days.length) return `<h1>Agenda</h1><p class="print-empty">No upcoming events.</p>`;
 

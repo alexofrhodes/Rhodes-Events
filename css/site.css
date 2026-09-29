@@ -2135,10 +2135,20 @@ body.view-calendar.cal-mode-week .cal-nav-bar {
   box-sizing: border-box;
 }
 
+body.view-calendar #view-calendar > .cal-nav-bar,
 body.view-calendar #view-calendar > .cal-layout,
 body.view-calendar #view-calendar > .cal-agenda-full {
   width: 100%;
   align-self: stretch;
+}
+
+body.view-calendar #view-calendar > .cal-nav-bar {
+  flex: 0 0 auto;
+  margin-bottom: 0.35rem;
+  max-width: 1100px;
+  margin-inline: auto;
+  box-sizing: border-box;
+  padding-inline: 0.15rem;
 }
 
 body.view-calendar.cal-mode-week #view-calendar > .cal-layout {
