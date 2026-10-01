@@ -635,7 +635,32 @@
   }
 
   function isAllDay(ev) {
-    return !ev.time;
+    return !(ev.time || "").trim();
+  }
+
+  /** Within one calendar day: multi all-day → all-day → multi timed → timed; then time; then title. */
+  function eventSortTier(ev) {
+    const multi = isMultiDay(ev);
+    const allDay = isAllDay(ev);
+    if (multi && allDay) return 0;
+    if (allDay) return 1;
+    if (multi) return 2;
+    return 3;
+  }
+
+  function sortWithinDay(a, b) {
+    const tierCmp = eventSortTier(a) - eventSortTier(b);
+    if (tierCmp) return tierCmp;
+    const timeCmp = (a.time || "").localeCompare(b.time || "");
+    if (timeCmp) return timeCmp;
+    return (a.title || "").localeCompare(b.title || "", undefined, { sensitivity: "base" });
+  }
+
+  /** Cross-day lists: start date, then same within-day order. */
+  function sortSoonest(a, b) {
+    const dateCmp = (a.date || "").localeCompare(b.date || "");
+    if (dateCmp) return dateCmp;
+    return sortWithinDay(a, b);
   }
 
   const RECUR_LABELS = { 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 7: "Sun" };
@@ -741,14 +766,6 @@
   function navigateUrl(ev) {
     if (ev.lat == null || ev.lng == null) return "";
     return `https://www.google.com/maps/dir/?api=1&destination=${ev.lat},${ev.lng}`;
-  }
-
-  function sortSoonest(a, b) {
-    return (
-      (a.date || "").localeCompare(b.date || "") ||
-      (a.time || "").localeCompare(b.time || "") ||
-      (a.title || "").localeCompare(b.title || "")
-    );
   }
 
   function monthKey(ev) {
@@ -1518,7 +1535,7 @@
     });
     let total = 0;
     railsDayKeys().forEach((day) => {
-      const items = byDay.get(day).slice().sort(sortSoonest);
+      const items = byDay.get(day).slice().sort(sortWithinDay);
       total += items.length;
       const col = document.createElement("div");
       col.className = "rails-day";
@@ -1842,13 +1859,13 @@
       host.appendChild(head);
       const list = document.createElement("div");
       list.className = "cal-agenda-day-list";
-      appendAgendaRows(list, grouped.get(day).slice().sort(sortSoonest), { thumbs: true });
+      appendAgendaRows(list, grouped.get(day).slice().sort(sortWithinDay), { thumbs: true });
       host.appendChild(list);
     });
   }
 
   function eventsOnDay(iso) {
-    return state.filtered.filter((ev) => eventOccursOn(ev, iso)).sort(sortSoonest);
+    return state.filtered.filter((ev) => eventOccursOn(ev, iso)).sort(sortWithinDay);
   }
 
   function selectAgendaDay(iso) {
@@ -3134,7 +3151,7 @@
     for (let i = 0; i < startPad; i++) cells += '<div class="print-cal-cell empty"></div>';
     for (let day = 1; day <= daysInMonth; day++) {
       const iso = `${key}-${String(day).padStart(2, "0")}`;
-      const dayEvents = events.filter((ev) => eventOccursOn(ev, iso));
+      const dayEvents = events.filter((ev) => eventOccursOn(ev, iso)).slice().sort(sortWithinDay);
       cells += `<div class="print-cal-cell"><div class="print-cal-daynum">${day}</div>${dayEvents
         .map((ev) => printChipHtml(ev, 14))
         .join("")}</div>`;
@@ -3209,7 +3226,7 @@
     let html = "<h1>Agenda</h1>";
     days.forEach((day) => {
       const d = parseISO(day);
-      const items = grouped.get(day).slice().sort(sortSoonest);
+      const items = grouped.get(day).slice().sort(sortWithinDay);
       const tight = items.length <= 2 ? " print-agenda-tight" : "";
       const label = escapeHtml(
         d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
