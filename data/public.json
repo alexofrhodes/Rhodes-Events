@@ -1,6 +1,6 @@
 {
   "title": "Events",
-  "generated": "2026-10-02T08:31:26",
+  "generated": "2026-10-02T10:43:29",
   "center": {
     "lat": 36.451456,
     "lng": 28.2234119,
@@ -334,12 +334,12 @@
       "titleTranslated": "Catharsis",
       "date": "2026-10-02",
       "endDate": "",
-      "time": "21:00",
+      "time": "20:30",
       "recurWeekdays": [],
-      "location": "The Palace of the Grand Master",
-      "locationOriginal": "Παλάτι του Μεγάλου Μαγίστρου",
-      "locationTranslated": "The Palace of the Grand Master",
-      "locationKey": "Παλάτι του Μεγάλου Μαγίστρου",
+      "location": "Evangelismos Church",
+      "locationOriginal": "Ιερός Καθεδρικός Ναός Ευαγγελισμού της Θεοτόκου",
+      "locationTranslated": "Evangelismos Church",
+      "locationKey": "Ιερός Καθεδρικός Ναός Ευαγγελισμού της Θεοτόκου",
       "artist": "",
       "category": [],
       "notes": "The art of movement and stillness is revealed through a polyphonic program, taking the audience on a journey into the heart of sound, highlighting the dynamism and detail of contemporary creation. The program explores the meeting of souls through voice, as a space for dialogue between cultures and eras. The central axis of the concert is the new compositions: the work \"Katharsis\" (2023–2024), for mixed choir, percussion, and solo violin, by the acclaimed composer Savvas Karanstias. This is a modern liturgy in nine movements, dedicated to Arvo Pärt and Veljo Tormis. And in contrapuntal dialogue, the French composer Christopher Gibert presents the work \"Hymnus,\" an original creation inspired by a 13th-century Occitan manuscript, combining texts from the New Testament. This rare source guides the search for light, giving birth to a deeply reflective musical language. Contributors: Dulci Jubilo Chamber Choir Mikrokosmos Choir – octet Christopher Gibert, musical direction, composition Sébastien Gisbert, percussion Savvas Karanstias, composition Chrysanthos Antoniou, violin Admission is free for the public; booking for the concert is mandatory. It can be done online through the festival's website: www.festivaleuropeanpolyphony.com",
@@ -348,8 +348,8 @@
       "url": "https://www.rhodes.com.gr/ekdilosi/katharsis/",
       "image": "img/Catharsis_dc59fe4d955c.jpg",
       "thumb": "img/Catharsis_dc59fe4d955c_t.jpg",
-      "lat": 36.4454344025347,
-      "lng": 28.224198818206787
+      "lat": 36.450619555313246,
+      "lng": 28.224998342377017
     },
     {
       "id": "fc34890f71094c21bfddaa53d502035e",
