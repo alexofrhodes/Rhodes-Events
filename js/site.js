@@ -2509,8 +2509,8 @@
     const panel = sheet?.querySelector(".detail-scroll") || sheet?.querySelector(".detail-panel");
     if (!sheet || !chrome) return;
 
-    /* Dismiss when pulled past this fraction of the viewport height (was 80px). */
-    const DISMISS_RATIO = 0.5;
+    /* Dismiss when pulled past this fraction of the viewport height (was 0.5). */
+    const DISMISS_RATIO = 0.22;
     const ARM_PX = 8;
 
     let startY = 0;
@@ -2520,6 +2520,7 @@
     let captureEl = null;
     let panelArmed = false;
     let panelDragging = false;
+    let atTopPullStartY = null;
 
     const resetSheet = () => {
       sheet.classList.remove("is-dragging");
@@ -2530,6 +2531,7 @@
       captureEl = null;
       panelArmed = false;
       panelDragging = false;
+      atTopPullStartY = null;
     };
 
     const beginSheetDrag = (e, el) => {
@@ -2594,31 +2596,37 @@
         startY = e.clientY;
         currentY = 0;
         dragMoved = false;
+        /* Only track pull-to-dismiss from top; re-arm after scroll-up without releasing. */
+        atTopPullStartY = panel.scrollTop <= 0 ? e.clientY : null;
       });
 
       panel.addEventListener(
         "pointermove",
         (e) => {
-          if (!panelArmed && !panelDragging) return;
-
           if (panelDragging || dragging) {
             moveSheetDrag(e);
             return;
           }
+          if (!panelArmed) return;
 
-          const dy = e.clientY - startY;
           if (panel.scrollTop > 0) {
-            panelArmed = false;
+            atTopPullStartY = null;
             return;
           }
-          if (dy <= ARM_PX) return;
 
-          panelArmed = false;
+          /* Arrived back at top mid-gesture (scroll down then up): start measuring pull here. */
+          if (atTopPullStartY == null) {
+            atTopPullStartY = e.clientY;
+            return;
+          }
+
+          const pull = e.clientY - atTopPullStartY;
+          if (pull <= ARM_PX) return;
+
           panelDragging = true;
           beginSheetDrag(e, panel);
-          /* Restart from current finger so first frame matches pull distance. */
-          startY = e.clientY - dy;
-          currentY = Math.max(0, dy);
+          startY = e.clientY - pull;
+          currentY = Math.max(0, pull);
           dragMoved = true;
           sheet.style.transform = `translateY(${currentY}px)`;
           e.preventDefault();
@@ -2633,11 +2641,13 @@
           return;
         }
         panelArmed = false;
+        atTopPullStartY = null;
       };
       panel.addEventListener("pointerup", endPanel);
       panel.addEventListener("pointercancel", () => {
         panelArmed = false;
         panelDragging = false;
+        atTopPullStartY = null;
         if (dragging) resetSheet();
       });
     }

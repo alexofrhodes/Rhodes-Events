@@ -3795,7 +3795,7 @@ body.detail-open {
   overflow: auto;
   flex: 1 1 auto;
   min-height: 0;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
@@ -3855,19 +3855,25 @@ body.detail-open {
 }
 
 .detail-close {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.65rem;
+  position: relative;
+  top: auto;
+  right: auto;
   z-index: 10;
-  width: 2.2rem;
-  height: 2.2rem;
-  border: 0;
+  width: 2.35rem;
+  height: 2.35rem;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  font-size: 1.4rem;
+  background: var(--elevated);
+  color: var(--ink);
+  font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 1px 6px rgba(28, 25, 23, 0.18);
+  box-shadow: none;
+  flex: 0 0 auto;
+}
+
+.detail-close-footer:hover {
+  background: var(--sand);
 }
 
 .detail-hero {
