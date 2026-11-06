@@ -2,7 +2,7 @@
   "use strict";
 
   const SETTINGS_KEY = "events-site-settings-v1";
-  const ALL_VIEWS = ["cards", "rails", "table", "posters", "calendar", "map", "starred"];
+  const ALL_VIEWS = ["cards", "rails", "table", "posters", "calendar", "directory", "map", "starred"];
   const ALL_FILTERS = ["search", "categories", "venues", "toggles"];
   const VIEW_LABELS = {
     cards: "Cards",
@@ -10,6 +10,7 @@
     table: "Table",
     posters: "Posters",
     calendar: "Calendar",
+    directory: "Directory",
     map: "Map",
     starred: "Starred",
   };
@@ -73,6 +74,15 @@
     heroSrc: "",
     deferredInstall: null,
     _ignoreDatesSet: false,
+    artists: {},
+    organizers: {},
+    venueCatalog: {},
+    entity: null,
+    entityFromEventId: null,
+    detailFromEntity: null,
+    directoryTab: "artists",
+    directorySearch: "",
+    entityInfoCollapsed: false,
   };
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -453,6 +463,9 @@
       if (Array.isArray(data.hiddenFilters)) {
         state.hiddenFilters = new Set(data.hiddenFilters.filter((v) => ALL_FILTERS.includes(v)));
       }
+      if (typeof data.entityInfoCollapsed === "boolean") {
+        state.entityInfoCollapsed = data.entityInfoCollapsed;
+      }
     } catch (_) {
       /* ignore */
     }
@@ -483,6 +496,7 @@
           railsHorizon: state.railsHorizon,
           hiddenViews: [...state.hiddenViews],
           hiddenFilters: [...state.hiddenFilters],
+          entityInfoCollapsed: state.entityInfoCollapsed,
         })
       );
     } catch (_) {
@@ -517,6 +531,237 @@
         ? state.data.events
         : [];
     state.events = source.map(projectEvent).sort(sortSoonest);
+  }
+
+  function priceShouldShow(price) {
+    return Boolean(String(price || "").trim());
+  }
+
+  function parseMediaGrid(text) {
+    const raw = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    if (!raw.trim()) return [];
+    const rows = [];
+    for (const line of raw.split("\n")) {
+      const stripped = line.trim();
+      if (!stripped) {
+        if (rows.length && rows[rows.length - 1].length) rows.push([]);
+        continue;
+      }
+      const tokens = stripped.split(/\s+/).filter(Boolean);
+      if (!tokens.length) continue;
+      if (rows.length && rows[rows.length - 1].length === 0) rows[rows.length - 1] = tokens;
+      else rows.push(tokens);
+    }
+    return rows.filter((r) => r.length);
+  }
+
+  function youtubeId(token) {
+    const m = String(token || "").match(
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{6,})/i
+    );
+    return m ? m[1] : "";
+  }
+
+  function vimeoId(token) {
+    const m = String(token || "").match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+    return m ? m[1] : "";
+  }
+
+  function resolveMediaSrc(token) {
+    const t = String(token || "").trim();
+    if (!t) return "";
+    if (/^https?:\/\//i.test(t)) return t;
+    if (t.startsWith("img/") || t.startsWith("icons/") || t.startsWith("data/")) return t;
+    if (t.startsWith("docs/img/")) return t.slice(5);
+    if (t.includes("/") || /\.(jpe?g|png|gif|webp|avif|svg)$/i.test(t)) {
+      return t.replace(/^docs\//, "");
+    }
+    return t;
+  }
+
+  function renderMediaGrid(host, mediaText) {
+    if (!host) return;
+    host.innerHTML = "";
+    const rows = Array.isArray(mediaText) ? mediaText : parseMediaGrid(mediaText);
+    if (!rows.length) {
+      host.classList.add("hidden");
+      return;
+    }
+    host.classList.remove("hidden");
+    rows.forEach((tokens) => {
+      const row = document.createElement("div");
+      row.className = "media-grid-row";
+      tokens.forEach((token) => {
+        const cell = document.createElement("div");
+        cell.className = "media-grid-cell";
+        const yt = youtubeId(token);
+        const vim = vimeoId(token);
+        if (yt) {
+          const iframe = document.createElement("iframe");
+          iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(yt)}`;
+          iframe.title = "YouTube";
+          iframe.allow =
+            "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+          iframe.allowFullscreen = true;
+          cell.appendChild(iframe);
+        } else if (vim) {
+          const iframe = document.createElement("iframe");
+          iframe.src = `https://player.vimeo.com/video/${encodeURIComponent(vim)}`;
+          iframe.title = "Vimeo";
+          iframe.allow = "autoplay; fullscreen; picture-in-picture";
+          iframe.allowFullscreen = true;
+          cell.appendChild(iframe);
+        } else {
+          const src = resolveMediaSrc(token);
+          const img = document.createElement("img");
+          img.src = src;
+          img.alt = "";
+          img.loading = "lazy";
+          img.addEventListener("click", () => openLightbox(src, ""));
+          cell.appendChild(img);
+        }
+        row.appendChild(cell);
+      });
+      host.appendChild(row);
+    });
+  }
+
+  function entityKindLabel(kind) {
+    if (kind === "artist") return state.lang === "el" ? "Καλλιτέχνης" : "Artist";
+    if (kind === "venue") return state.lang === "el" ? "Χώρος" : "Venue";
+    return state.lang === "el" ? "Διοργανωτής" : "Organizer";
+  }
+
+  function findEntity(kind, name) {
+    const key = String(name || "").trim();
+    if (!key) return null;
+    const store =
+      kind === "artist"
+        ? state.artists
+        : kind === "organizer"
+          ? state.organizers
+          : state.venueCatalog;
+    const hit = store && store[key];
+    if (hit) return { ...hit, name: hit.name || key, kind };
+    return { name: key, kind, notes: "", website: "", media: "", mediaRows: [] };
+  }
+
+  function eventsForEntity(kind, name) {
+    const key = String(name || "").trim();
+    if (!key) return [];
+    return state.events.filter((ev) => {
+      if (kind === "artist") return (ev.artist || "").trim() === key;
+      if (kind === "organizer") return (ev.organizer || "").trim() === key;
+      return (ev.locationKey || "").trim() === key || (ev.location || "").trim() === key;
+    });
+  }
+
+  function entityDisplayName(ent) {
+    if (!ent) return "";
+    const key = (ent.name || "").trim();
+    const original = (ent.nameOriginal || key).trim();
+    const translated = (ent.nameTranslated || "").trim();
+    if (state.lang === "el") return original || translated || key;
+    return translated || original || key;
+  }
+
+  function closeEntity() {
+    const panel = $("#entity");
+    if (!panel) return;
+    panel.classList.add("hidden");
+    state.entity = null;
+    state.entityFromEventId = null;
+    const back = $("[data-entity-back]");
+    if (back) back.classList.add("hidden");
+    if (/^#(a|v|o)=/.test(location.hash)) {
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+    unlockDetailPageScroll();
+  }
+
+  function openEntity(kind, name, { fromEventId = null } = {}) {
+    const ent = findEntity(kind, name);
+    if (!ent) return;
+    const fromId =
+      fromEventId ||
+      (state.selected && state.selected.id) ||
+      state.entityFromEventId ||
+      null;
+    closeDetail();
+    closeMapSheet();
+    state.entityFromEventId = fromId;
+    state.entity = { kind, name: ent.name };
+    const hashKey = kind === "artist" ? "a" : kind === "organizer" ? "o" : "v";
+    location.hash = `${hashKey}=${encodeURIComponent(ent.name)}`;
+    const panel = $("#entity");
+    panel.classList.remove("hidden");
+    lockDetailPageScroll();
+    const back = $("[data-entity-back]");
+    if (back) back.classList.toggle("hidden", !state.entityFromEventId);
+    $("#entity-kicker").textContent = entityKindLabel(kind);
+    $("#entity-title").textContent = entityDisplayName(ent);
+    const meta = $("#entity-meta");
+    const bits = [];
+    if (kind === "artist" && ent.genre) bits.push(ent.genre);
+    const alt =
+      state.lang === "el"
+        ? (ent.nameTranslated || "").trim()
+        : (ent.nameOriginal || ent.name || "").trim();
+    const shown = entityDisplayName(ent);
+    if (alt && alt !== shown) bits.push(alt);
+    meta.textContent = bits.join(" · ");
+    meta.classList.toggle("hidden", !bits.length);
+    const web = $("#entity-website");
+    if (ent.website) {
+      const href = /^https?:\/\//i.test(ent.website) ? ent.website : `https://${ent.website}`;
+      web.href = href;
+      web.textContent = ent.website.replace(/^https?:\/\//i, "");
+      web.classList.remove("hidden");
+    } else {
+      web.removeAttribute("href");
+      web.classList.add("hidden");
+    }
+    const notesEl = $("#entity-notes");
+    const notesHtml = formatNotesHtml(ent.notes || "");
+    if (notesHtml) {
+      notesEl.innerHTML = notesHtml;
+      notesEl.classList.remove("hidden");
+    } else {
+      notesEl.textContent = "";
+      notesEl.classList.add("hidden");
+    }
+    renderMediaGrid($("#entity-media"), ent.mediaRows && ent.mediaRows.length ? ent.mediaRows : ent.media);
+    const list = $("#entity-events");
+    const empty = $("#entity-events-empty");
+    list.innerHTML = "";
+    const upcoming = eventsForEntity(kind, ent.name);
+    empty.classList.toggle("hidden", upcoming.length > 0);
+    upcoming.forEach((ev) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "entity-event-card";
+      const thumb = document.createElement("span");
+      thumb.className = "entity-event-thumb";
+      const src = imageUrl(ev, true) || imageUrl(ev, false);
+      if (src) thumb.style.backgroundImage = `url('${escapeAttr(src)}')`;
+      const title = document.createElement("span");
+      title.className = "entity-event-title";
+      title.textContent = ev.title || "Untitled";
+      const when = document.createElement("span");
+      when.className = "entity-event-when";
+      when.textContent = fmtWhen(ev);
+      btn.append(thumb, title, when);
+      btn.addEventListener("click", () => {
+        const fromEntity = { kind, name: ent.name };
+        closeEntity();
+        openDetail(ev.id, { fromEntity });
+      });
+      list.appendChild(btn);
+    });
+    const infoFold = $('[data-entity-fold="info"]');
+    if (infoFold) infoFold.open = !state.entityInfoCollapsed;
+    const upcomingFold = $('[data-entity-fold="upcoming"]');
+    if (upcomingFold) upcomingFold.open = true;
   }
 
   function syncLangButtons() {
@@ -573,8 +818,14 @@
     renderUpdateInfo();
     if (state.selected) {
       const id = state.selected.id;
-      if (!$("#detail").classList.contains("hidden")) openDetail(id);
+      if (!$("#detail").classList.contains("hidden")) openDetail(id, { keepFromEntity: true });
     }
+    if (state.entity && $("#entity") && !$("#entity").classList.contains("hidden")) {
+      openEntity(state.entity.kind, state.entity.name, {
+        fromEventId: state.entityFromEventId,
+      });
+    }
+    if (state.view === "directory") renderDirectory();
     closeLangDropdown();
   }
 
@@ -848,7 +1099,7 @@
       if (!overlapsCustomRange(ev)) return false;
     }
     if (state.search) {
-      const hay = [ev.title, ev.location, ev.artist, ev.notes, ...(ev.category || [])]
+      const hay = [ev.title, ev.location, ev.artist, ev.organizer, ev.notes, ...(ev.category || [])]
         .join(" ")
         .toLowerCase();
       if (!hay.includes(state.search)) return false;
@@ -971,7 +1222,11 @@
     document.body.classList.toggle("view-starred", name === "starred");
     document.body.classList.toggle("view-calendar", name === "calendar");
     document.body.classList.toggle("view-posters", name === "posters");
-    $("#month-nav").classList.toggle("hidden", name === "rails" || !usesMonthNav);
+    document.body.classList.toggle("view-directory", name === "directory");
+    $("#month-nav").classList.toggle(
+      "hidden",
+      name === "rails" || name === "directory" || !usesMonthNav
+    );
     $("#month-prev").classList.toggle("hidden", name === "starred");
     $("#month-next").classList.toggle("hidden", name === "starred");
     const clearStars = $("#stars-clear");
@@ -990,7 +1245,7 @@
     });
     syncViewsDropdown();
     closeViewsDropdown();
-    ["list", "rails", "calendar", "map", "posters"].forEach((id) => {
+    ["list", "rails", "calendar", "map", "posters", "directory"].forEach((id) => {
       const el = $(`#view-${id}`);
       if (!el) return;
       const on = id === "list" ? isList : id === name;
@@ -1000,6 +1255,7 @@
     saveSettings();
     updatePrintButton();
     applyFilters();
+    if (name === "directory") renderDirectory();
     if (name === "map") {
       requestAnimationFrame(() => {
         ensureMap();
@@ -1017,7 +1273,9 @@
     }
     if (name === "rails") {
       ensureRailsHorizon();
-      requestAnimationFrame(() => renderRails());
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => renderRails());
+      });
     }
     if (name === "calendar") {
       requestAnimationFrame(() => {
@@ -2299,6 +2557,19 @@
           </svg>
         </button>
         ${
+          (ev.url || "").trim()
+            ? `<a class="icon-btn circle-btn tickets-btn" href="${escapeAttr(
+                /^https?:\/\//i.test(String(ev.url).trim()) ? String(ev.url).trim() : `https://${String(ev.url).trim()}`
+              )}" target="_blank" rel="noopener" aria-label="More info" title="${escapeAttr(
+                urlDisplayLabel(ev.url) || "More info"
+              )}">
+            <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+            </svg>
+          </a>`
+            : ""
+        }
+        ${
           maps
             ? `<a class="icon-btn circle-btn navigate-btn" href="${escapeAttr(maps)}" target="_blank" rel="noopener" aria-label="Directions" title="Directions">
             <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -2376,14 +2647,111 @@
     if (state.view === "rails") renderRails();
     if (state.view === "posters") renderPosters();
     if (state.view === "calendar") syncCalendar();
+    if (state.view === "directory") renderDirectory();
     if (state.map) {
       renderMarkers();
       if (state.view === "map") fitMap();
     }
-    if (state.view === "calendar" || state.view === "map") {
+    if (state.view === "calendar" || state.view === "map" || state.view === "directory") {
       setBrandTitle(state.filtered.length);
       clearResultCount();
     }
+  }
+
+  function urlDisplayLabel(raw) {
+    const s = String(raw || "").trim();
+    if (!s) return "";
+    try {
+      const href = /^https?:\/\//i.test(s) ? s : `https://${s}`;
+      const host = new URL(href).host.replace(/^www\./i, "");
+      return host || s.replace(/^https?:\/\//i, "");
+    } catch (_) {
+      return s.replace(/^https?:\/\//i, "");
+    }
+  }
+
+  function renderDirectory() {
+    const list = $("#directory-list");
+    const empty = $("#directory-empty");
+    if (!list) return;
+    const tab =
+      state.directoryTab === "organizers"
+        ? "organizers"
+        : state.directoryTab === "venues"
+          ? "venues"
+          : "artists";
+    state.directoryTab = tab;
+    $$("[data-directory-tab]").forEach((btn) => {
+      const on = btn.dataset.directoryTab === tab;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    const searchInput = $("#directory-search");
+    if (searchInput && searchInput.value !== state.directorySearch) {
+      searchInput.value = state.directorySearch;
+    }
+    const clearBtn = $("#directory-search-clear");
+    if (clearBtn) clearBtn.classList.toggle("hidden", !state.directorySearch.trim());
+
+    let store;
+    let kind;
+    if (tab === "organizers") {
+      store = state.organizers;
+      kind = "organizer";
+    } else if (tab === "venues") {
+      store = state.venueCatalog;
+      kind = "venue";
+    } else {
+      store = state.artists;
+      kind = "artist";
+    }
+    const nameSet = new Set(
+      Object.keys(store || {})
+        .map((n) => String(n || "").trim())
+        .filter(Boolean)
+    );
+    if (kind === "venue") {
+      state.events.forEach((ev) => {
+        const key = (ev.locationKey || ev.location || "").trim();
+        if (key) nameSet.add(key);
+      });
+    }
+    const q = state.directorySearch.trim().toLowerCase();
+    const names = [...nameSet]
+      .filter((n) => {
+        if (!q) return true;
+        const ent = findEntity(kind, n) || { name: n };
+        const hay = `${n} ${ent.nameTranslated || ""} ${ent.nameOriginal || ""} ${entityDisplayName(ent)}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .sort((a, b) =>
+        entityDisplayName(findEntity(kind, a) || { name: a }).localeCompare(
+          entityDisplayName(findEntity(kind, b) || { name: b })
+        )
+      );
+    list.innerHTML = "";
+    if (!names.length) {
+      empty?.classList.remove("hidden");
+      empty.textContent = q ? "No matches." : "No entries yet.";
+      return;
+    }
+    empty?.classList.add("hidden");
+    names.forEach((name) => {
+      const ent = findEntity(kind, name) || { name };
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "directory-row";
+      const title = document.createElement("span");
+      title.className = "directory-row-title";
+      title.textContent = entityDisplayName(ent) || name;
+      const meta = document.createElement("span");
+      meta.className = "directory-row-meta";
+      const upcoming = eventsForEntity(kind, name).length;
+      meta.textContent = upcoming ? `${upcoming} upcoming` : "";
+      btn.append(title, meta);
+      btn.addEventListener("click", () => openEntity(kind, name));
+      list.appendChild(btn);
+    });
   }
 
   function findEvent(id) {
@@ -2453,6 +2821,9 @@
 
   function unlockDetailPageScroll() {
     if (!document.body.classList.contains("detail-open")) return;
+    // Keep lock while entity drawer is open (closeDetail's deferred unlock must not fight it).
+    if ($("#entity") && !$("#entity").classList.contains("hidden")) return;
+    if ($("#detail") && !$("#detail").classList.contains("hidden")) return;
     const y = detailScrollY;
     document.body.classList.remove("detail-open");
     document.body.style.position = "";
@@ -2464,12 +2835,24 @@
     requestAnimationFrame(() => restoreDetailPageScroll(y));
   }
 
-  function openDetail(id) {
+  function syncDetailBackUi() {
+    const show = Boolean(state.detailFromEntity);
+    $$("[data-detail-back]").forEach((btn) => btn.classList.toggle("hidden", !show));
+  }
+
+  function openDetail(id, opts = {}) {
     const ev = findEvent(id);
     if (!ev) return;
+    const fromEntity = opts.fromEntity;
+    if (fromEntity && fromEntity.kind && fromEntity.name) {
+      state.detailFromEntity = { kind: fromEntity.kind, name: fromEntity.name };
+    } else if (!opts.keepFromEntity) {
+      state.detailFromEntity = null;
+    }
     state.selected = ev;
     location.hash = `e=${encodeURIComponent(id)}`;
     $("#detail").classList.remove("hidden");
+    syncDetailBackUi();
     const hero = $("#detail-hero");
     const img = imageUrl(ev, false) || imageUrl(ev, true);
     state.heroSrc = img;
@@ -2482,26 +2865,79 @@
     star.setAttribute("aria-pressed", isStarred(ev.id) ? "true" : "false");
     star.setAttribute("aria-label", isStarred(ev.id) ? "Unstar event" : "Star event");
     $("#detail-when").textContent = fmtWhen(ev);
+    const priceEl = $("#detail-price");
+    if (priceShouldShow(ev.price)) {
+      priceEl.textContent = String(ev.price).trim();
+      priceEl.classList.remove("hidden");
+    } else {
+      priceEl.textContent = "";
+      priceEl.classList.add("hidden");
+    }
     const where = $("#detail-where");
     where.textContent = ev.location || "";
-    const canMap = Boolean(ev.location && state.enabledViews.has("map"));
-    where.classList.toggle("location-link", canMap);
-    if (canMap) {
+    const venueKey = (ev.locationKey || "").trim();
+    const canVenue = Boolean(venueKey || ev.location);
+    where.classList.toggle("location-link", canVenue);
+    where.classList.toggle("entity-link", canVenue);
+    if (canVenue) {
       where.setAttribute("role", "link");
       where.tabIndex = 0;
-      where.setAttribute("title", "Show on map");
+      where.setAttribute("title", "Open venue");
+      where.onclick = () => openEntity("venue", venueKey || ev.location, { fromEventId: ev.id });
+      where.onkeydown = (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openEntity("venue", venueKey || ev.location, { fromEventId: ev.id });
+        }
+      };
     } else {
       where.removeAttribute("role");
       where.removeAttribute("tabindex");
       where.removeAttribute("title");
+      where.onclick = null;
+      where.onkeydown = null;
     }
     const artist = $("#detail-artist");
     if (ev.artist) {
-      artist.textContent = ev.artist;
+      artist.textContent = entityDisplayName(findEntity("artist", ev.artist)) || ev.artist;
       artist.classList.remove("hidden");
+      artist.classList.add("entity-link");
+      artist.setAttribute("role", "link");
+      artist.tabIndex = 0;
+      artist.onclick = () => openEntity("artist", ev.artist, { fromEventId: ev.id });
+      artist.onkeydown = (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openEntity("artist", ev.artist, { fromEventId: ev.id });
+        }
+      };
     } else {
       artist.classList.add("hidden");
+      artist.onclick = null;
+      artist.onkeydown = null;
     }
+    const organizer = $("#detail-organizer");
+    if (ev.organizer) {
+      organizer.textContent =
+        entityDisplayName(findEntity("organizer", ev.organizer)) || ev.organizer;
+      organizer.classList.remove("hidden");
+      organizer.classList.add("entity-link");
+      organizer.setAttribute("role", "link");
+      organizer.tabIndex = 0;
+      organizer.onclick = () => openEntity("organizer", ev.organizer, { fromEventId: ev.id });
+      organizer.onkeydown = (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openEntity("organizer", ev.organizer, { fromEventId: ev.id });
+        }
+      };
+    } else {
+      organizer.classList.add("hidden");
+      organizer.onclick = null;
+      organizer.onkeydown = null;
+    }
+    const lineupSec = $("#detail-lineup-label")?.closest(".detail-section");
+    if (lineupSec) lineupSec.classList.toggle("hidden", !ev.artist && !ev.organizer);
     const cats = $("#detail-cats");
     cats.innerHTML = "";
     (ev.category || []).forEach((c) => {
@@ -2531,6 +2967,19 @@
     $("#btn-gcal").href = googleCalUrl(ev);
     const hasCoords = ev.lat != null && ev.lng != null;
     $("#detail-map-hint").classList.toggle("hidden", hasCoords || !ev.location);
+    const tickets = $("#btn-tickets");
+    const ticketUrl = (ev.url || "").trim();
+    if (tickets) {
+      if (ticketUrl) {
+        tickets.href = /^https?:\/\//i.test(ticketUrl) ? ticketUrl : `https://${ticketUrl}`;
+        tickets.title = urlDisplayLabel(ticketUrl) || "More info";
+        tickets.classList.remove("hidden");
+      } else {
+        tickets.removeAttribute("href");
+        tickets.title = "More info";
+        tickets.classList.add("hidden");
+      }
+    }
     const nav = $("#btn-navigate");
     const maps = navigateUrl(ev);
     if (maps) {
@@ -2625,7 +3074,7 @@
 
     const interactivePanelTarget = (el) =>
       !!el?.closest?.(
-        "a, button, input, textarea, select, label, .leaflet-container, .mini-map, [data-close], [role='menu'], [role='menuitem']"
+        "a, button, input, textarea, select, label, .leaflet-container, .mini-map, .entity-link, [data-close], [data-entity-close], [role='menu'], [role='menuitem']"
       );
 
     chrome.addEventListener("pointerdown", (e) => {
@@ -2751,6 +3200,8 @@
     }
     state.selected = null;
     state.heroSrc = "";
+    state.detailFromEntity = null;
+    syncDetailBackUi();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => unlockDetailPageScroll());
     });
@@ -3857,6 +4308,8 @@
       html += `<label><input type="checkbox" data-show-filter="${key}"${checked} /> ${FILTER_LABELS[key] || key}</label>`;
     });
     html += "</div></div></div>";
+    const infoCollapsed = state.entityInfoCollapsed ? " checked" : "";
+    html += `<label class="settings-check"><input type="checkbox" data-entity-info-collapsed${infoCollapsed} /> Collapse Info by default</label>`;
     popup.innerHTML = html;
     popup.querySelector(".month-popup-close").addEventListener("click", closeSettingsPopup);
     popup.querySelectorAll("[data-cols]").forEach((btn) =>
@@ -3888,6 +4341,10 @@
         saveSettings();
       })
     );
+    popup.querySelector("[data-entity-info-collapsed]")?.addEventListener("change", (e) => {
+      state.entityInfoCollapsed = Boolean(e.target.checked);
+      saveSettings();
+    });
   }
 
   async function promptInstall() {
@@ -3969,6 +4426,26 @@
     $$(".top-view-btn").forEach((btn) =>
       btn.addEventListener("click", () => toggleTopView(btn.dataset.view))
     );
+    $$("[data-directory-tab]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const t = btn.dataset.directoryTab;
+        state.directoryTab = t === "organizers" || t === "venues" ? t : "artists";
+        renderDirectory();
+      })
+    );
+    const dirSearch = $("#directory-search");
+    if (dirSearch) {
+      dirSearch.addEventListener("input", () => {
+        state.directorySearch = dirSearch.value || "";
+        renderDirectory();
+      });
+    }
+    $("#directory-search-clear")?.addEventListener("click", () => {
+      state.directorySearch = "";
+      if (dirSearch) dirSearch.value = "";
+      renderDirectory();
+      dirSearch?.focus();
+    });
     bindLongPress($("#btn-cats"), {
       onShort: (e) => toggleFilterPopup("#cat-popup", "#btn-cats", e),
       onLong: () => {
@@ -4058,15 +4535,7 @@
     $("#detail-star").addEventListener("click", (e) => {
       if (state.selected) toggleStar(state.selected.id, e);
     });
-    $("#detail-where").addEventListener("click", () => {
-      if (state.selected) openLocationOnMap(state.selected);
-    });
-    $("#detail-where").addEventListener("keydown", (e) => {
-      if ((e.key === "Enter" || e.key === " ") && state.selected) {
-        e.preventDefault();
-        openLocationOnMap(state.selected);
-      }
-    });
+    /* Venue open is bound in openDetail (entity page). Long-press map optional via Place section map. */
     $$("[data-about-close]").forEach((el) =>
       el.addEventListener("click", () => $("#about").classList.add("hidden"))
     );
@@ -4209,10 +4678,30 @@
         else if (!$("#range-popup").classList.contains("hidden")) closeRangePopup();
         else if (!$("#lightbox").classList.contains("hidden")) closeLightbox();
         else if (!$("#about").classList.contains("hidden")) $("#about").classList.add("hidden");
+        else if ($("#entity") && !$("#entity").classList.contains("hidden")) closeEntity();
         else if (!$("#detail").classList.contains("hidden")) closeDetail();
         else if (!$("#map-sheet").classList.contains("hidden")) closeMapSheet();
       }
     });
+    $$("[data-entity-close]").forEach((el) => el.addEventListener("click", closeEntity));
+    $$("[data-entity-back]").forEach((el) =>
+      el.addEventListener("click", () => {
+        const id = state.entityFromEventId;
+        closeEntity();
+        if (id) openDetail(id);
+      })
+    );
+    $$("[data-detail-back]").forEach((el) =>
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const ent = state.detailFromEntity;
+        if (!ent) return;
+        state.detailFromEntity = null;
+        closeDetail();
+        openEntity(ent.kind, ent.name);
+      })
+    );
     window.addEventListener("resize", () => {
       applyToolbarLayout();
       refreshHScrollFades();
@@ -4223,8 +4712,26 @@
   }
 
   function readHash() {
-    const m = location.hash.match(/^#e=(.+)$/);
-    if (m) openDetail(decodeURIComponent(m[1]));
+    const h = location.hash || "";
+    const ev = h.match(/^#e=(.+)$/);
+    if (ev) {
+      openDetail(decodeURIComponent(ev[1]), { keepFromEntity: true });
+      return;
+    }
+    const artist = h.match(/^#a=(.+)$/);
+    if (artist) {
+      openEntity("artist", decodeURIComponent(artist[1]));
+      return;
+    }
+    const organizer = h.match(/^#o=(.+)$/);
+    if (organizer) {
+      openEntity("organizer", decodeURIComponent(organizer[1]));
+      return;
+    }
+    const venue = h.match(/^#v=(.+)$/);
+    if (venue) {
+      openEntity("venue", decodeURIComponent(venue[1]));
+    }
   }
 
   async function boot() {
@@ -4258,6 +4765,12 @@
     document.title = state.data.title || "Events";
     setBrandTitle();
     state.rawEvents = (Array.isArray(state.data.events) ? state.data.events : []).slice();
+    state.artists = state.data.artists && typeof state.data.artists === "object" ? state.data.artists : {};
+    state.organizers =
+      state.data.organizers && typeof state.data.organizers === "object" ? state.data.organizers : {};
+    state.venueCatalog =
+      state.data.venues && typeof state.data.venues === "object" ? state.data.venues : {};
+    if (!(state.venues instanceof Set)) state.venues = new Set();
     rebuildEventsFromLang();
     syncLangButtons();
     startClock();

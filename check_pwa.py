@@ -42,8 +42,8 @@ def main() -> int:
             errors.append("service worker missing shell cache name")
         if 'cache: "no-store"' not in text and "cache: 'no-store'" not in text:
             errors.append("networkFirst must fetch with cache: no-store")
-        if "events-shell-v98" not in text:
-            errors.append("service worker shell should be events-shell-v98")
+        if "events-shell-v111" not in text:
+            errors.append("service worker shell should be events-shell-v111")
 
     if not index_path.is_file():
         errors.append("missing index.html")

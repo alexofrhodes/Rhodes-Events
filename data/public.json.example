@@ -6,5 +6,8 @@
     "lng": 28.2234119,
     "zoom": 12
   },
-  "events": []
+  "events": [],
+  "artists": {},
+  "organizers": {},
+  "venues": {}
 }

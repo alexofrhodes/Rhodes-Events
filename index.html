@@ -26,6 +26,7 @@
       ["table", true],
       ["posters", true],
       ["calendar", true],
+      ["directory", true],
       ["map", true],
       ["starred", true],
     ];
@@ -122,6 +123,11 @@
         <button type="button" id="btn-cats" class="icon-btn circle-btn" aria-label="Categories" title="Categories · long-press to clear" aria-haspopup="true" aria-expanded="false">
           <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path fill="currentColor" d="M21.41 11.58l-9-9A2 2 0 0 0 11 2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 .59 1.41l9 9a2 2 0 0 0 2.82 0l7-7a2 2 0 0 0 0-2.83zM5.5 7A1.5 1.5 0 1 1 7 5.5 1.5 1.5 0 0 1 5.5 7z"/>
+          </svg>
+        </button>
+        <button type="button" id="btn-view-directory" class="icon-btn circle-btn top-view-btn" data-view="directory" aria-label="Directory" title="Directory">
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
           </svg>
         </button>
         <button type="button" id="btn-view-map" class="icon-btn circle-btn top-view-btn" data-view="map" aria-label="Map" title="Map">
@@ -289,6 +295,23 @@
       </div>
       <div id="map-sheet" class="map-sheet hidden" role="dialog" aria-modal="false"></div>
     </section>
+
+    <section id="view-directory" class="view" aria-label="Directory" hidden>
+      <div class="directory-toolbar">
+        <div class="directory-tabs" role="tablist" aria-label="Directory">
+          <button type="button" class="directory-tab active" data-directory-tab="artists" aria-selected="true">Artists</button>
+          <button type="button" class="directory-tab" data-directory-tab="organizers" aria-selected="false">Organizers</button>
+          <button type="button" class="directory-tab" data-directory-tab="venues" aria-selected="false">Venues</button>
+        </div>
+        <div class="directory-search-wrap">
+          <label class="sr-only" for="directory-search">Search directory</label>
+          <input id="directory-search" type="search" placeholder="Search…" autocomplete="off" />
+          <button type="button" id="directory-search-clear" class="directory-search-clear" aria-label="Clear search" title="Clear">×</button>
+        </div>
+      </div>
+      <div id="directory-list" class="directory-list"></div>
+      <p id="directory-empty" class="empty hidden">No entries yet.</p>
+    </section>
   </main>
 
   <div id="print-preview" class="print-preview hidden" role="dialog" aria-modal="true" aria-label="Print preview">
@@ -317,24 +340,46 @@
         <div class="detail-title-row">
           <h2 id="detail-title"></h2>
         </div>
-        <p id="detail-when" class="meta"></p>
+        <p id="detail-when-row" class="meta detail-when-row">
+          <span id="detail-when"></span>
+          <span id="detail-price" class="detail-price-chip hidden"></span>
+        </p>
         <p id="detail-where" class="meta"></p>
         </div>
-        <p id="detail-map-hint" class="meta muted hidden">Map unavailable for this venue</p>
-        <p id="detail-artist" class="meta hidden"></p>
-        <div id="detail-notes" class="notes"></div>
-        <div id="detail-mini-map" class="mini-map hidden"></div>
+
+        <section class="detail-section" aria-labelledby="detail-about-label">
+          <h3 id="detail-about-label" class="detail-section-label">About</h3>
+          <div id="detail-notes" class="notes"></div>
+        </section>
+
+        <section class="detail-section" aria-labelledby="detail-lineup-label">
+          <h3 id="detail-lineup-label" class="detail-section-label">Line-up</h3>
+          <p id="detail-artist" class="meta entity-link hidden"></p>
+          <p id="detail-organizer" class="meta entity-link hidden"></p>
+        </section>
+
+        <section class="detail-section" aria-labelledby="detail-place-label">
+          <h3 id="detail-place-label" class="detail-section-label">Place</h3>
+          <p id="detail-map-hint" class="meta muted hidden">Map unavailable for this venue</p>
+          <div id="detail-mini-map" class="mini-map hidden"></div>
+        </section>
         </div>
         </div>
         <div class="detail-sticky-actions" aria-label="Event actions">
+          <button type="button" class="detail-back icon-btn circle-btn hidden" data-detail-back aria-label="Back" title="Back">←</button>
           <button type="button" id="detail-star" class="star-btn detail-sticky-star" aria-label="Star event">☆</button>
+          <a id="btn-tickets" class="icon-btn circle-btn tickets-btn hidden" target="_blank" rel="noopener" aria-label="More info" title="More info">
+            <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+            </svg>
+          </a>
           <a id="btn-navigate" class="icon-btn circle-btn navigate-btn hidden" target="_blank" rel="noopener" aria-label="Directions" title="Directions">
             <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path fill="currentColor" d="M12 2 4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
             </svg>
           </a>
           <div class="cal-menu-wrap">
-            <button type="button" id="btn-cal" class="icon-btn circle-btn icon-btn-primary" aria-haspopup="true" aria-expanded="false" aria-label="Calendar" title="Calendar">
+            <button type="button" id="btn-cal" class="icon-btn circle-btn" aria-haspopup="true" aria-expanded="false" aria-label="Calendar" title="Calendar">
               <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z"/>
               </svg>
@@ -361,6 +406,38 @@
           <button type="button" class="detail-close detail-close-footer" data-close aria-label="Close">×</button>
         </div>
       </article>
+    </div>
+  </div>
+
+  <div id="entity" class="entity hidden" role="dialog" aria-modal="true" aria-labelledby="entity-title">
+    <div class="entity-backdrop" data-entity-close></div>
+    <div class="entity-sheet">
+      <div class="entity-sheet-chrome">
+        <p id="entity-kicker" class="entity-kicker"></p>
+        <h2 id="entity-title"></h2>
+        <p id="entity-meta" class="meta"></p>
+        <a id="entity-website" class="entity-website hidden" target="_blank" rel="noopener"></a>
+      </div>
+      <div class="entity-scroll">
+        <details class="entity-fold" data-entity-fold="info" open>
+          <summary class="entity-fold-summary">Info</summary>
+          <div class="entity-fold-body">
+            <div id="entity-notes" class="notes entity-notes"></div>
+            <div id="entity-media" class="media-grid" aria-label="Media"></div>
+          </div>
+        </details>
+        <details class="entity-fold" data-entity-fold="upcoming" open>
+          <summary class="entity-fold-summary">Upcoming</summary>
+          <div class="entity-fold-body">
+            <div id="entity-events" class="entity-events"></div>
+            <p id="entity-events-empty" class="meta muted hidden">No upcoming events.</p>
+          </div>
+        </details>
+      </div>
+      <div class="entity-sticky-actions" aria-label="Entity actions">
+        <button type="button" class="entity-back icon-btn circle-btn hidden" data-entity-back aria-label="Back" title="Back">←</button>
+        <button type="button" class="entity-close detail-close detail-close-footer" data-entity-close aria-label="Close">×</button>
+      </div>
     </div>
   </div>
 
