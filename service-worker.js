@@ -1,5 +1,5 @@
 /* PWA: precache app shell; network-first so republish updates show. */
-const SHELL = "events-shell-v90";
+const SHELL = "events-shell-v99";
 const SHELL_URLS = [
   "./",
   "index.html",
@@ -49,7 +49,7 @@ async function precacheShell() {
 async function networkFirst(req, cacheKey) {
   const cache = await caches.open(SHELL);
   try {
-    const res = await fetch(req);
+    const res = await fetch(req, { cache: "no-store" });
     if (res && res.ok) await cache.put(cacheKey || req, res.clone());
     return res;
   } catch (_) {

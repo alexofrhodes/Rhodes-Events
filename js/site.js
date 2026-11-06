@@ -584,6 +584,7 @@
     $("#date-to").value = state.dateTo || "";
     $("#hide-allday").checked = state.hideAllDay;
     $("#hide-multiday").checked = state.hideMultiDay;
+    updateHideToggleCounts();
     updateTogglesButton();
     applyCardsPerRow();
   }
@@ -832,9 +833,7 @@
     });
   }
 
-  function matchesFilters(ev) {
-    if (state.hideAllDay && isAllDay(ev)) return false;
-    if (state.hideMultiDay && isMultiDay(ev)) return false;
+  function matchesFiltersIgnoringHide(ev) {
     if (state.categories.size) {
       const cats = ev.category || [];
       const selected = [...state.categories];
@@ -857,6 +856,30 @@
     return true;
   }
 
+  function matchesFilters(ev) {
+    if (state.hideAllDay && isAllDay(ev)) return false;
+    if (state.hideMultiDay && isMultiDay(ev)) return false;
+    return matchesFiltersIgnoringHide(ev);
+  }
+
+  function updateHideToggleCounts() {
+    let allDay = 0;
+    let multi = 0;
+    for (const ev of state.events) {
+      if (!matchesFiltersIgnoringHide(ev)) continue;
+      if (state.view === "starred") {
+        const today = todayISO();
+        if (!(isStarred(ev.id) && eventEnd(ev) >= today)) continue;
+      }
+      if (isAllDay(ev)) allDay += 1;
+      if (isMultiDay(ev)) multi += 1;
+    }
+    const a = $("#hide-allday-count");
+    const m = $("#hide-multiday-count");
+    if (a) a.textContent = String(allDay);
+    if (m) m.textContent = String(multi);
+  }
+
   function applyFilters() {
     let list = state.events.filter(matchesFilters);
     if (state.view === "starred") {
@@ -866,6 +889,7 @@
     state.filtered = list.sort(sortSoonest);
     ensureFocusMonth();
     saveSettings();
+    updateHideToggleCounts();
     renderAll();
   }
 
@@ -1190,6 +1214,7 @@
     if (!wasOpen) {
       if (popupSel === "#cat-popup") renderCategoryPicker();
       if (popupSel === "#loc-popup") renderLocationFilter();
+      if (popupSel === "#toggles-popup") updateHideToggleCounts();
       popup.classList.remove("hidden");
       if (btn) btn.setAttribute("aria-expanded", "true");
       addBackdrop(popup, closeFilterPopups);
@@ -2267,39 +2292,60 @@
         <p class="meta">${escapeHtml(fmtWhen(ev))}</p>
         <p class="meta">${escapeHtml(ev.location || "")}</p>
       </div>
-      <div class="sheet-actions">
-        <button type="button" class="btn primary" data-open>Details</button>
+      <div class="sheet-actions" aria-label="Event actions">
+        <button type="button" class="icon-btn circle-btn icon-btn-primary" data-open aria-label="Details" title="Details">
+          <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 12h8v2H8v-2zm0 4h8v2H8v-2z"/>
+          </svg>
+        </button>
+        ${
+          maps
+            ? `<a class="icon-btn circle-btn navigate-btn" href="${escapeAttr(maps)}" target="_blank" rel="noopener" aria-label="Directions" title="Directions">
+            <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M12 2 4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+            </svg>
+          </a>`
+            : ""
+        }
         <div class="cal-menu-wrap">
-          <button type="button" class="btn primary" data-cal-btn aria-haspopup="true" aria-expanded="false">Calendar</button>
+          <button type="button" class="icon-btn circle-btn" data-cal-btn aria-haspopup="true" aria-expanded="false" aria-label="Calendar" title="Calendar">
+            <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z"/>
+            </svg>
+          </button>
           <div class="cal-menu hidden" data-cal-menu role="menu">
             <a class="cal-menu-item" data-gcal href="${escapeAttr(googleCalUrl(ev))}" target="_blank" rel="noopener" role="menuitem">Google Calendar</a>
             <button type="button" class="cal-menu-item" data-ics role="menuitem">Download .ics</button>
           </div>
         </div>
-        ${
-          maps
-            ? `<a class="btn secondary" href="${escapeAttr(maps)}" target="_blank" rel="noopener">Navigate</a>`
-            : ""
-        }
-        <button type="button" class="btn ghost" data-share-btn>Share</button>
-      </div>
-      <div class="share-row map-share-row hidden" data-share-row>
-        <button type="button" data-share="copy" class="btn ghost">Copy link</button>
-        <a data-share="whatsapp" class="btn ghost" target="_blank" rel="noopener">WhatsApp</a>
-        <a data-share="facebook" class="btn ghost" target="_blank" rel="noopener">Facebook</a>
-        <a data-share="x" class="btn ghost" target="_blank" rel="noopener">X</a>
-        <a data-share="mail" class="btn ghost">Mail</a>
+        <div class="cal-menu-wrap">
+          <button type="button" class="icon-btn circle-btn" data-share-btn aria-haspopup="true" aria-expanded="false" aria-label="Share" title="Share">
+            <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+            </svg>
+          </button>
+          <div class="cal-menu hidden" data-share-menu role="menu">
+            <button type="button" data-share="copy" class="cal-menu-item" role="menuitem">Copy link</button>
+            <a data-share="whatsapp" class="cal-menu-item" target="_blank" rel="noopener" role="menuitem">WhatsApp</a>
+            <a data-share="facebook" class="cal-menu-item" target="_blank" rel="noopener" role="menuitem">Facebook</a>
+            <a data-share="x" class="cal-menu-item" target="_blank" rel="noopener" role="menuitem">X</a>
+            <a data-share="mail" class="cal-menu-item" role="menuitem">Mail</a>
+          </div>
+        </div>
       </div>`;
     sheet.querySelector("[data-close-sheet]").addEventListener("click", closeMapSheet);
     sheet.querySelector("[data-open]").addEventListener("click", () => openDetail(ev.id));
     bindCalMenu(sheet.querySelector("[data-cal-btn]"), sheet.querySelector("[data-cal-menu]"), () =>
       downloadIcs(ev)
     );
-    const shareRow = sheet.querySelector("[data-share-row]");
-    sheet.querySelector("[data-share-btn]").addEventListener("click", () => shareEvent(ev, shareRow));
-    shareRow.querySelector('[data-share="copy"]').addEventListener("click", async () => {
+    const shareMenu = sheet.querySelector("[data-share-menu]");
+    sheet.querySelector("[data-share-btn]").addEventListener("click", (e) => {
+      e.stopPropagation();
+      shareEvent(ev, shareMenu);
+    });
+    shareMenu.querySelector('[data-share="copy"]').addEventListener("click", async () => {
       const url = eventShareUrl(ev);
-      const copyBtn = shareRow.querySelector('[data-share="copy"]');
+      const copyBtn = shareMenu.querySelector('[data-share="copy"]');
       try {
         await navigator.clipboard.writeText(url);
         copyBtn.textContent = "Copied";
@@ -2309,7 +2355,11 @@
       } catch (_) {
         prompt("Copy this link", url);
       }
+      closeCalMenus();
     });
+    shareMenu.querySelectorAll("a.cal-menu-item").forEach((a) =>
+      a.addEventListener("click", () => closeCalMenus())
+    );
   }
 
   function closeMapSheet() {
@@ -2953,13 +3003,21 @@
     return m ? m[1].trim() : raw;
   }
 
-  function applyNotesEmphasis(html) {
-    let out = html;
-    out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    out = out.replace(/__(.+?)__/g, "<strong>$1</strong>");
-    out = out.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>");
-    out = out.replace(/(^|[^A-Za-z0-9_])_([^_\n]+?)_(?![A-Za-z0-9_])/g, "$1<em>$2</em>");
-    return out;
+  function mapNotesTextSegments(html, fn) {
+    return String(html || "").replace(/(<[^>]+>)|([^<]+)/g, (_m, tag, text) => (tag ? tag : fn(text)));
+  }
+
+  function applyNotesInlineMd(html) {
+    return mapNotesTextSegments(html, (text) => {
+      let out = text;
+      out = out.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+      out = out.replace(/~~(.+?)~~/g, "<del>$1</del>");
+      out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      out = out.replace(/__(.+?)__/g, "<strong>$1</strong>");
+      out = out.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>");
+      out = out.replace(/(^|[^A-Za-z0-9_])_([^_\n]+?)_(?![A-Za-z0-9_])/g, "$1<em>$2</em>");
+      return out;
+    });
   }
 
   function linkifyNotesHtml(html) {
@@ -2969,22 +3027,86 @@
       if (!href) return `[${label}](${url})`;
       return `<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
     });
-    out = out.replace(
-      /(^|[\s(])((?:https?:\/\/|www\.)[^\s<]+[^\s.,;:!?)\]'\"<])/gi,
-      (match, prefix, url) => {
-        const href = safeNoteHref(url);
-        if (!href) return match;
-        return `${prefix}<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-      }
-    );
+    // Bare URLs anywhere inline (not only after whitespace / line start).
+    // No capturing groups — replace callback is (match, offset, string).
+    out = out.replace(/(?:https?:\/\/|www\.)[^\s<>"']+[^\s<>"'.,;:!?)\]\]]/gi, (url, offset, full) => {
+      const prev = offset > 0 ? full[offset - 1] : "";
+      if (prev && /[\w/=\"'`]/.test(prev)) return url;
+      const before = full.slice(0, offset);
+      if (/href=["']?$/i.test(before)) return url;
+      const lastOpen = before.lastIndexOf("<a ");
+      const lastClose = before.lastIndexOf("</a>");
+      if (lastOpen > lastClose) return url;
+      const href = safeNoteHref(url);
+      if (!href) return url;
+      return `<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
     return out;
   }
 
-  function isNotesBlockStart(line) {
-    return /^(#{1,3})\s+/.test(line) || /^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line);
+  function notesListItemMatch(line) {
+    const m = String(line || "").match(/^(\s*)([-*+]|\d+\.)\s+(?:\[([ xX])\]\s+)?(.*)$/);
+    if (!m) return null;
+    return {
+      indent: m[1].replace(/\t/g, "  ").length,
+      ordered: /^\d+\.$/.test(m[2]),
+      task: m[3] == null ? null : String(m[3]).toLowerCase(),
+      text: m[4] || "",
+    };
   }
 
-  /** Escape first, then basic MD blocks/emphasis + linkify. */
+  function isNotesBlockStart(line) {
+    return (
+      /^(#{1,3})\s+/.test(line) ||
+      /^>\s?/.test(line) ||
+      /^(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line) ||
+      notesListItemMatch(line) != null
+    );
+  }
+
+  /** Nested ul/ol including GFM task items `- [ ]` / `- [x]`. */
+  function formatNotesList(lines, start) {
+    const first = notesListItemMatch(lines[start]);
+    if (!first) return null;
+    const base = first.indent;
+    const ordered = first.ordered;
+    const items = [];
+    let anyTask = false;
+    let i = start;
+    while (i < lines.length) {
+      if (!String(lines[i] || "").trim()) break;
+      const item = notesListItemMatch(lines[i]);
+      if (!item || item.indent < base || item.ordered !== ordered) break;
+      if (item.indent > base) break;
+      i += 1;
+      let nested = "";
+      if (i < lines.length) {
+        const next = notesListItemMatch(lines[i]);
+        if (next && next.indent > base) {
+          const sub = formatNotesList(lines, i);
+          if (sub) {
+            nested = sub.html;
+            i = sub.next;
+          }
+        }
+      }
+      let body = item.text;
+      if (item.task != null) {
+        anyTask = true;
+        const checked = item.task === "x";
+        body =
+          `<label class="task-item">` +
+          `<input type="checkbox" disabled${checked ? " checked" : ""}>` +
+          `<span>${item.text}</span></label>`;
+      }
+      items.push(`<li>${body}${nested}</li>`);
+    }
+    const tag = ordered ? "ol" : "ul";
+    const cls = anyTask ? ' class="task-list"' : "";
+    return { html: `<${tag}${cls}>${items.join("")}</${tag}>`, next: i };
+  }
+
+  /** Escape first, then linkify + inline MD, then block structure. */
   function formatNotesBlocks(escaped) {
     const lines = String(escaped || "").split(/\r?\n/);
     const parts = [];
@@ -2995,6 +3117,11 @@
         i += 1;
         continue;
       }
+      if (/^(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line.trim())) {
+        parts.push("<hr>");
+        i += 1;
+        continue;
+      }
       const heading = line.match(/^(#{1,3})\s+(.+)$/);
       if (heading) {
         const level = heading[1].length + 1;
@@ -3002,23 +3129,22 @@
         i += 1;
         continue;
       }
-      if (/^[-*]\s+/.test(line)) {
-        const items = [];
-        while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
-          items.push(lines[i].replace(/^[-*]\s+/, ""));
+      if (/^>\s?/.test(line)) {
+        const quote = [];
+        while (i < lines.length && /^>\s?/.test(lines[i])) {
+          quote.push(lines[i].replace(/^>\s?/, ""));
           i += 1;
         }
-        parts.push(`<ul>${items.map((t) => `<li>${t}</li>`).join("")}</ul>`);
+        parts.push(`<blockquote><p>${quote.join("<br>")}</p></blockquote>`);
         continue;
       }
-      if (/^\d+\.\s+/.test(line)) {
-        const items = [];
-        while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
-          items.push(lines[i].replace(/^\d+\.\s+/, ""));
-          i += 1;
+      if (notesListItemMatch(line)) {
+        const list = formatNotesList(lines, i);
+        if (list) {
+          parts.push(list.html);
+          i = list.next;
+          continue;
         }
-        parts.push(`<ol>${items.map((t) => `<li>${t}</li>`).join("")}</ol>`);
-        continue;
       }
       const para = [];
       while (i < lines.length && lines[i].trim() && !isNotesBlockStart(lines[i])) {
@@ -3034,9 +3160,11 @@
     const raw = unwrapMarkdownFence(text);
     let html = escapeHtml(raw);
     if (!html) return "";
-    html = formatNotesBlocks(html);
-    html = applyNotesEmphasis(html);
-    return linkifyNotesHtml(html);
+    // Linkify on flat text first so bare/markdown URLs work inline and at line start;
+    // then inline MD on text segments only (won't touch href= / <a>).
+    html = linkifyNotesHtml(html);
+    html = applyNotesInlineMd(html);
+    return formatNotesBlocks(html);
   }
 
   function escapeAttr(value) {
@@ -3791,7 +3919,38 @@
       location.hostname === "localhost" ||
       location.hostname === "127.0.0.1";
     if (!secure) return;
-    navigator.serviceWorker.register("service-worker.js", { scope: "./" }).catch(() => {});
+
+    // Clear prior reload guard so a later SW update can refresh again this session.
+    try {
+      sessionStorage.removeItem("em-sw-reloaded");
+    } catch (_) {}
+
+    // New SW took control — reload once so the tab runs fresh shell JS/CSS.
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        try {
+          if (sessionStorage.getItem("em-sw-reloaded") === "1") return;
+          sessionStorage.setItem("em-sw-reloaded", "1");
+        } catch (_) {}
+        location.reload();
+      });
+    }
+
+    navigator.serviceWorker
+      .register("service-worker.js", { scope: "./" })
+      .then((reg) => {
+        const poke = () => {
+          try {
+            reg.update();
+          } catch (_) {}
+        };
+        poke();
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") poke();
+        });
+      })
+      .catch(() => {});
+
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       state.deferredInstall = e;

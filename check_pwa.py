@@ -40,6 +40,10 @@ def main() -> int:
             errors.append("service worker has no fetch handler")
         if "events-shell-" not in text:
             errors.append("service worker missing shell cache name")
+        if 'cache: "no-store"' not in text and "cache: 'no-store'" not in text:
+            errors.append("networkFirst must fetch with cache: no-store")
+        if "events-shell-v98" not in text:
+            errors.append("service worker shell should be events-shell-v98")
 
     if not index_path.is_file():
         errors.append("missing index.html")
@@ -47,8 +51,53 @@ def main() -> int:
         html = index_path.read_text(encoding="utf-8")
         if 'rel="manifest"' not in html:
             errors.append("index.html missing manifest link")
-        if "service-worker.js" not in (ROOT / "js" / "site.js").read_text(encoding="utf-8"):
+        site_js = (ROOT / "js" / "site.js").read_text(encoding="utf-8")
+        if "service-worker.js" not in site_js:
             errors.append("site.js does not register service-worker.js")
+        if "controllerchange" not in site_js:
+            errors.append("registerPwa must reload on controllerchange")
+        if "reg.update()" not in site_js and ".update()" not in site_js:
+            errors.append("registerPwa must call registration.update()")
+        if "em-sw-reloaded" not in site_js:
+            errors.append("registerPwa missing sessionStorage reload guard")
+        if 'class="detail-sticky-meta"' not in html and "detail-sticky-meta" not in html:
+            errors.append("index.html missing detail-sticky-meta for title/when/where")
+        if 'id="hide-allday-count"' not in html or 'id="hide-multiday-count"' not in html:
+            errors.append("visibility toggles missing hide-allday/multiday count spans")
+        if "updateHideToggleCounts" not in site_js or "matchesFiltersIgnoringHide" not in site_js:
+            errors.append("site.js missing hide-toggle count helpers")
+        if "about-desc" not in html:
+            errors.append("About panel missing project description (.about-desc)")
+        if "Display name" in html:
+            errors.append("About panel must not use obsolete Display name label")
+        if "about-name" in html or ">Alex of Rhodes<" in html:
+            errors.append("About panel must not show obsolete author name hero")
+        # Notes: linkify (inline + line-start) then inline MD, then blocks.
+        fn = site_js
+        i_fmt = fn.find("function formatNotesHtml")
+        i_link = fn.find("linkifyNotesHtml(html)", i_fmt)
+        i_inline = fn.find("applyNotesInlineMd(html)", i_fmt)
+        i_blocks = fn.find("formatNotesBlocks(html)", i_fmt)
+        if i_fmt < 0 or i_link < 0 or i_inline < 0 or i_blocks < 0:
+            errors.append("formatNotesHtml missing linkify/inline/blocks calls")
+        elif not (i_link < i_inline < i_blocks):
+            errors.append("formatNotesHtml must call linkify → inline MD → blocks")
+        if "mapNotesTextSegments" not in site_js:
+            errors.append("site.js missing mapNotesTextSegments for safe inline MD")
+        if "<blockquote>" not in site_js or "<del>" not in site_js or "<code>" not in site_js:
+            errors.append("notes MD missing blockquote/del/code rendering")
+        if "lastIndexOf(\"<a \")" not in site_js and "lastIndexOf('<a ')" not in site_js:
+            errors.append("linkifyNotesHtml must allow bare URLs inline (skip inside <a>)")
+        if "formatNotesList" not in site_js or "task-list" not in site_js:
+            errors.append("notes MD missing nested lists / task checkboxes")
+        if 'type="checkbox"' not in site_js:
+            errors.append("notes task items must render disabled checkboxes")
+        # Bare-URL replace must not wrap the URL in a capturing group (shifts offset/string args).
+        link_fn = site_js[site_js.find("function linkifyNotesHtml") : site_js.find("function notesListItemMatch")]
+        if "((?:https?:" in link_fn:
+            errors.append("linkifyNotesHtml bare-URL regex must not wrap match in a capturing group")
+        if "(url, offset, full)" not in link_fn:
+            errors.append("linkifyNotesHtml bare-URL callback must be (url, offset, full)")
 
     # pixel sizes
     try:

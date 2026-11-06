@@ -213,8 +213,8 @@
   <div id="toggles-popup" class="filter-popup toggles-popup hidden" role="dialog" aria-label="Event visibility">
     <div class="filter-popup-head"><span>Visibility</span></div>
     <div class="event-toggles event-toggles-popup">
-      <label><input type="checkbox" id="hide-allday" /> Hide all-day</label>
-      <label><input type="checkbox" id="hide-multiday" /> Hide multi-day</label>
+      <label><input type="checkbox" id="hide-allday" /> Hide all-day (<span id="hide-allday-count">0</span>)</label>
+      <label><input type="checkbox" id="hide-multiday" /> Hide multi-day (<span id="hide-multiday-count">0</span>)</label>
     </div>
     <div class="filter-popup-actions">
       <button type="button" id="toggles-done" class="btn primary">Done</button>
@@ -313,11 +313,13 @@
         <button type="button" id="detail-hero" class="detail-hero" aria-label="View full image"></button>
         <div class="detail-body">
         <p id="detail-cats" class="chips detail-chips"></p>
+        <div class="detail-sticky-meta">
         <div class="detail-title-row">
           <h2 id="detail-title"></h2>
         </div>
         <p id="detail-when" class="meta"></p>
         <p id="detail-where" class="meta"></p>
+        </div>
         <p id="detail-map-hint" class="meta muted hidden">Map unavailable for this venue</p>
         <p id="detail-artist" class="meta hidden"></p>
         <div id="detail-notes" class="notes"></div>
@@ -372,7 +374,6 @@
     <div class="about-panel">
       <button type="button" class="about-close" data-about-close aria-label="Close">×</button>
       <p class="about-kicker">About</p>
-      <p class="about-name">Alex of Rhodes</p>
       <div class="about-group">
         <div class="about-row">
           <span class="about-label">Email</span>
@@ -382,6 +383,13 @@
           <span class="about-label">GitHub</span>
           <a class="about-value" href="https://github.com/alexofrhodes" target="_blank" rel="noopener">github.com/alexofrhodes</a>
         </div>
+      </div>
+      <p class="about-desc">
+        A bilingual public calendar of events in Rhodes — browse, filter, and share what’s on, built with the Python Event Manager.
+      </p>
+      <div class="about-qr">
+        <p class="about-qr-caption">Scan to open site</p>
+        <img src="icons/site-qr.png" width="96" height="96" alt="QR code for this site" />
       </div>
       <hr class="about-sep" />
       <p class="about-kicker">Install app</p>
@@ -396,10 +404,6 @@
         </div>
       </div>
       <p class="muted about-note">Stars stay in this browser only.</p>
-      <div class="about-qr">
-        <p class="about-qr-caption">Scan to open site</p>
-        <img src="icons/site-qr.png" width="96" height="96" alt="QR code for this site" />
-      </div>
     </div>
   </div>
 
