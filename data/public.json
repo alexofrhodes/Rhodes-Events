@@ -1,6 +1,6 @@
 {
   "title": "Events",
-  "generated": "2026-11-16T07:41:50",
+  "generated": "2026-11-17T07:43:54",
   "center": {
     "lat": 36.451456,
     "lng": 28.2234119,
@@ -202,6 +202,31 @@
       "lng": 28.221600726287463
     },
     {
+      "id": "e239f38926734a35929fa82cad97f7a5",
+      "title": "The Party of Our Lives Vol.2",
+      "titleOriginal": "Το Πάρτυ της Ζωής μας Vol.2",
+      "titleTranslated": "The Party of Our Lives Vol.2",
+      "date": "2026-11-13",
+      "endDate": "2027-04-23",
+      "time": "22:00",
+      "recurWeekdays": [
+        5
+      ],
+      "location": "Detroit live stage",
+      "locationOriginal": "Detroit live stage",
+      "locationTranslated": "Detroit live stage",
+      "locationKey": "Detroit live stage",
+      "artist": "",
+      "organizer": "",
+      "category": [],
+      "notes": "Recurring: Friday\n\nThe musical program \"The Party of Our Lives Vol.2\" returns with live 80s-90s music at Detroit live stage & music bar, every Friday this winter at 10 PM. The performers on stage are: Panagiotis Patsanis, Tasos Kolios, Nikos Katsanos, Manos Savvenas, Natasa Katsara, Dimitris Vasilaras. For information and reservations, call: 6948072576.",
+      "notesOriginal": "Recurring: Friday\n\nΤο μουσικό πρόγραμμα «Το Πάρτυ της Ζωής μας Vol.2» επιστρέφει με ζωντανή μουσική 80’s-90’s Live στο Detroit live stage & music bar, κάθε Παρασκευή του χειμώνα στις 22:00. Στη σκηνή εμφανίζονται οι συντελεστές: Παναγιώτης Πατσάνης Τάσος Κολιός Νίκος Κατσανός Μάνος Σαββένας Νατάσα Κατσάρα Δημήτρης Βασιλαράς Πληροφορίες και κρατήσεις στο τηλέφωνο: 6948072576.",
+      "notesTranslated": "Recurring: Friday\n\nThe musical program \"The Party of Our Lives Vol.2\" returns with live 80s-90s music at Detroit live stage & music bar, every Friday this winter at 10 PM. The performers on stage are: Panagiotis Patsanis, Tasos Kolios, Nikos Katsanos, Manos Savvenas, Natasa Katsara, Dimitris Vasilaras. For information and reservations, call: 6948072576.",
+      "url": "https://www.rhodes.com.gr/ekdilosi/to-party-tis-zois-mas-vol-2/",
+      "image": "img/The_Party_of_Our_Lives_Vol_2_e239f3892673.jpg",
+      "thumb": "img/The_Party_of_Our_Lives_Vol_2_e239f3892673_t.jpg"
+    },
+    {
       "id": "1e8420acda72448993030239f385c017",
       "title": "Looking Up",
       "titleOriginal": "Looking Up",
@@ -227,6 +252,29 @@
       "lng": 28.226752281188965
     },
     {
+      "id": "3ccc077ab0b547b08ab25b852614594c",
+      "title": "Free Mammogram Screening in the Municipal Unit of Attavyros",
+      "titleOriginal": "Δωρεάν Μαστογραφικός Έλεγχος στη Δημοτική Ενότητα Ατταβύρου",
+      "titleTranslated": "Free Mammogram Screening in the Municipal Unit of Attavyros",
+      "date": "2026-11-16",
+      "endDate": "2026-11-20",
+      "time": "",
+      "recurWeekdays": [],
+      "location": "",
+      "locationOriginal": "",
+      "locationTranslated": "",
+      "locationKey": "",
+      "artist": "",
+      "organizer": "",
+      "category": [],
+      "notes": "The Mobile Mammography Unit of the Hellenic Anti-Cancer Society (HACS) is organizing free preventive mammography screenings, following an invitation from the Municipality of Rhodes. The initiative is co-organized with the Community Center with a Roma Branch of the Social Policy and Health Directorate of the Municipality of Rhodes and the HACS Branch in Rhodes, taking place in Embonas, Attavyros Municipal Unit, from Monday, November 16, to Friday, November 20, 2026.\n\nBreast cancer is the most common malignancy affecting women in Greece, with the number of new cases estimated at 8,000 annually. Despite its high incidence, the disease poses progressively less threat to life and its quality, partly due to significant advancements in medical science that have led to more effective and personalized therapeutic interventions, and partly because the number of women undergoing preventive examinations is constantly increasing. Thus, cancer is discovered in early stages, when treatments are more effective and can lead to a cure.\n\nThe best examination for early diagnosis is mammography and regular preventive screening, as it significantly reduces mortality from the disease. The examination is painless, takes minimal time, and with new equipment, the radiation dose is extremely low.\n\n**Participation Requirements**\nWomen aged 40 to 65 who meet the following conditions are eligible to participate:\n*   Have not had a mammogram in the last 12 months.\n*   Have no history of breast cancer, biopsy, or cosmetic breast surgery.\n*   Are not menstruating (3 days before to 5 days after the examination date).\n\nThe initiative is supported by Mitsis Group, Blue Star Ferries, COLOSSOS TRAVEL – Filippos Giamalis, ELIN Liquid Fuel Station – Pechlevanidis Georgios, Gyro-Gonia, Bizeloupoli, Creperie Embonas, MAKAROUNAS BAKERY, the traditional tavern \"Bakis,\" and the tavern-grill \"O Ilias.\"\n\nFor more information, interested individuals can contact the HACS Communication Center at 2103826600, as well as through the website cancerhellas.org, the Facebook account HellenicCancerSociety, and Instagram cancerhellas.",
+      "notesOriginal": "Δωρεάν προληπτικό μαστογραφικό έλεγχο διοργανώνει η Κινητή Μονάδα Μαστογράφου της Ελληνικής Αντικαρκινικής Εταιρείας (Ε.Α.Ε.), έπειτα από πρόσκληση του Δήμου Ρόδου. Η δράση πραγματοποιείται σε συνδιοργάνωση με το Κέντρο Κοινότητας με Παράρτημα Ρομά της Διεύθυνσης Κοινωνικής Πολιτικής και Υγείας του Δήμου Ρόδου και το Παράρτημα της Ε.Α.Ε. στη Ρόδο, στον Έμπωνα της Δημοτικής Ενότητας Ατταβύρου, από τη Δευτέρα 16 έως και την Παρασκευή 20 Νοεμβρίου 2026. Ο καρκίνος του μαστού αποτελεί τη συχνότερη κακοήθεια που εμφανίζεται στις γυναίκες στην Ελλάδα, με τον αριθμό των νέων περιστατικών να υπολογίζεται στις 8.000 κάθε χρόνο. Παρά την υψηλή συχνότητά της, η ασθένεια απειλεί ολοένα και λιγότερο τη ζωή και την ποιότητά της, αφενός λόγω των σημαντικών προόδων της ιατρικής επιστήμης που οδήγησαν σε αποτελεσματικότερες και πιο εξατομικευμένες θεραπευτικές παρεμβάσεις, και αφετέρου επειδή ο αριθμός των γυναικών που υποβάλλονται σε προληπτικές εξετάσεις αυξάνεται συνεχώς. Έτσι, ο καρκίνος ανακαλύπτεται σε πρώιμα στάδια, όταν οι θεραπείες είναι πιο αποτελεσματικές και μπορούν να οδηγήσουν στην ίαση. Η καλύτερη εξέταση για την έγκαιρη διάγνωση είναι η μαστογραφία και ο τακτικός προληπτικός έλεγχος, καθώς μειώνει τη θνησιμότητα από την ασθένεια σε μεγάλο βαθμό. Η εξέταση είναι ανώδυνη, διαρκεί ελάχιστο χρόνο και με τα νέα μηχανήματα η δόση ακτινοβολίας είναι εξαιρετικά χαμηλή. Προϋποθέσεις Συμμετοχής Δικαίωμα συμμετοχής έχουν γυναίκες ηλικίας από 40 έως 65 ετών που πληρούν τις ακόλουθες προϋποθέσεις: Δεν έχουν πραγματοποιήσει μαστογραφία τους τελευταίους 12 μήνες. Δεν έχουν ιστορικό καρκίνου μαστού, βιοψίας ή αισθητικής επέμβασης στο μαστό. Δεν βρίσκονται σε έμμηνο ρύση (3 ημέρες πριν έως 5 ημέρες μετά την ημερομηνία της εξέτασης). Τη δράση στηρίζουν ο Όμιλος ΜITSIS, η Blue Star Ferries, το COLOSSOS TRAVEL – Φίλιππος Γιαμαλής, το Πρατήριο Υγρών Καυσίμων ΕΛΙΝ – Πεχλεβανίδης Γεώργιος, το Gyro-Γωνία, η Μπιζελούπολη, η Creperie Έμπωνας, ο MAKAROUNAS BAKERY, η παραδοσιακή ταβέρνα «Μπάκης» και η ταβέρνα – ψησταριά «Ο Ηλίας». Για περισσότερες πληροφορίες, οι ενδιαφερόμενες μπορούν να επικοινωνούν με το Κέντρο Επικοινωνίας της Ε.Α.Ε. στο τηλέφωνο 2103826600, καθώς και μέσω της ιστοσελίδας cancerhellas.org , του λογαριασμού στο Facebook HellenicCancerSociety και στο Instagram cancerhellas .",
+      "notesTranslated": "The Mobile Mammography Unit of the Hellenic Anti-Cancer Society (HACS) is organizing free preventive mammography screenings, following an invitation from the Municipality of Rhodes. The initiative is co-organized with the Community Center with a Roma Branch of the Social Policy and Health Directorate of the Municipality of Rhodes and the HACS Branch in Rhodes, taking place in Embonas, Attavyros Municipal Unit, from Monday, November 16, to Friday, November 20, 2026.\n\nBreast cancer is the most common malignancy affecting women in Greece, with the number of new cases estimated at 8,000 annually. Despite its high incidence, the disease poses progressively less threat to life and its quality, partly due to significant advancements in medical science that have led to more effective and personalized therapeutic interventions, and partly because the number of women undergoing preventive examinations is constantly increasing. Thus, cancer is discovered in early stages, when treatments are more effective and can lead to a cure.\n\nThe best examination for early diagnosis is mammography and regular preventive screening, as it significantly reduces mortality from the disease. The examination is painless, takes minimal time, and with new equipment, the radiation dose is extremely low.\n\n**Participation Requirements**\nWomen aged 40 to 65 who meet the following conditions are eligible to participate:\n*   Have not had a mammogram in the last 12 months.\n*   Have no history of breast cancer, biopsy, or cosmetic breast surgery.\n*   Are not menstruating (3 days before to 5 days after the examination date).\n\nThe initiative is supported by Mitsis Group, Blue Star Ferries, COLOSSOS TRAVEL – Filippos Giamalis, ELIN Liquid Fuel Station – Pechlevanidis Georgios, Gyro-Gonia, Bizeloupoli, Creperie Embonas, MAKAROUNAS BAKERY, the traditional tavern \"Bakis,\" and the tavern-grill \"O Ilias.\"\n\nFor more information, interested individuals can contact the HACS Communication Center at 2103826600, as well as through the website cancerhellas.org, the Facebook account HellenicCancerSociety, and Instagram cancerhellas.",
+      "url": "https://www.rhodes.com.gr/ekdilosi/dorean-mastografikos-elegchos-sti-dimotiki-enotita-attavyroy/",
+      "image": "img/Free_Mammogram_Screening_in_the_Municipa_3ccc077ab0b5.jpg",
+      "thumb": "img/Free_Mammogram_Screening_in_the_Municipa_3ccc077ab0b5_t.jpg"
+    },
+    {
       "id": "812bd0a18e244fb6a5a4a783a2c027f1",
       "title": "Beautiful City",
       "titleOriginal": "Όμορφη Πόλη",
@@ -250,6 +298,31 @@
       "thumb": "https://www.rhodes.com.gr/wp-content/uploads/2026/10/rhodescomgr_omorfi-poli-theatriki-parastasi-mikis-theodorakis-vasilis-koukos-e1793444379700.webp",
       "lat": 36.36620032438301,
       "lng": 28.18613290786743
+    },
+    {
+      "id": "5533381b956f4ff1a5ebfcde25aeb242",
+      "title": "Museum, Education and Society",
+      "titleOriginal": "Μουσείο, Εκπαίδευση και Κοινωνία",
+      "titleTranslated": "Museum, Education and Society",
+      "date": "2026-11-18",
+      "endDate": "2026-11-19",
+      "time": "18:00",
+      "recurWeekdays": [],
+      "location": "New Nestoridion Melathron Wing",
+      "locationOriginal": "Νέα Πτέρυγα Νεστορίδειου Μελάθρου",
+      "locationTranslated": "New Nestoridion Melathron Wing",
+      "locationKey": "Νέα Πτέρυγα Νεστορίδειου Μελάθρου",
+      "artist": "",
+      "organizer": "",
+      "category": [],
+      "notes": "The International Writers’ and Translators’ Center of Rhodes, part of the Directorate of Education and New Generation of the Municipality of Rhodes, in collaboration with the \"Karavaki\" bookstore and Topos Publications, is organizing on Wednesday, November 18, 2026, at 18:00, the presentation of Stathis Gotsis’ book titled \"Museum, Education and Society.\" The event will take place in the New Wing of the Nestoridion Mansion of the Museum of Modern Greek Art of the Municipality of Rhodes and aims to initiate a substantial dialogue around the contemporary role of the museum, its relationship with education, and its connection with society. The book approaches museum education as an organized pedagogical process and highlights the museum not only as a space for preserving and presenting cultural heritage but also as a vibrant place for learning, creation, social participation, and inclusion. As noted, the museum is not just a place we visit to learn about the past, but a space that helps us understand the present, ask questions, and shape our relationship with culture and society. The book includes a prologue by Dimitris Plantzos and an afterword by Amalia Tsitouri. Discussing the book and the different facets of the museum, education, and society relationship will be: the author of the book, Stathis Gotsis; Giannis Koukoulas, Assistant Professor of Visual Culture and Inter-iconic Approaches to Art at the School of Humanities, Department of Preschool Education Sciences and Educational Design, University of the Aegean; Loukia Orfanou, Educator, President of the Association of Philologists of Dodecanese; Poly Hatzimarkou, Art Historian, Cultural Manager, Special Advisor to the Mayor of Rhodes on cultural affairs and cultural administration; and Nikos Christodoulidis, Archaeologist at the Ephorate of Antiquities of Dodecanese. The discussion will be moderated by Eirini Symiakou, Head of the Department of the International Writers’ and Translators’ Center of Rhodes of the Directorate of Education & New Generation of the Municipality of Rhodes.\n\nEducational activity for students\nThe author's presence in Rhodes will also be accompanied by an educational activity on Thursday, November 19, 2026, with the participation of Secondary Education students. Through this educational encounter, students will have the opportunity to explore the relationship between the museum, education, and society, discover the importance of cultural heritage, and learn about the museum's potential as a space for experiential learning, observation, and creative participation. With this initiative, the International Writers’ and Translators’ Center of Rhodes strengthens the connection of books, knowledge, and culture with the educational community, highlighting the importance of collaboration between cultural and educational institutions.\n\nThe event is open to the public.\nInformation: International Writers’ and Translators’ Center of Rhodes, telephone 22410 28557.\n\nCo-organization: International Writers’ and Translators’ Center of Rhodes – \"Karavaki\" Bookstore\nWith hospitality support from: Semiramis City Hotel Rhodes\nPublisher: Topos\nCommunication sponsor: Lychnari Radio",
+      "notesOriginal": "Το Διεθνές Κέντρο Συγγραφέων και Μεταφραστών Ρόδου, της Διεύθυνσης Παιδείας και Νέας Γενιάς του Δήμου Ρόδου, σε συνεργασία με το βιβλιοπωλείο «Καραβάκι» και τις εκδόσεις Τόπος, διοργανώνει την Τετάρτη 18 Νοεμβρίου 2026, στις 18:00, την παρουσίαση του βιβλίου του Στάθη Γκότση με τίτλο «Μουσείο, Εκπαίδευση και κοινωνία». Η εκδήλωση θα πραγματοποιηθεί στη Νέα Πτέρυγα του Νεστορίδειου Μελάθρου του Μουσείου Νεοελληνικής Τέχνης Δήμου Ρόδου και φιλοδοξεί να ανοίξει έναν ουσιαστικό διάλογο γύρω από τον σύγχρονο ρόλο του μουσείου, τη σχέση του με την εκπαίδευση και τη σύνδεσή του με την κοινωνία. Το βιβλίο προσεγγίζει τη μουσειακή εκπαίδευση ως μια οργανωμένη παιδαγωγική διαδικασία και αναδεικνύει το μουσείο όχι μόνο ως χώρο διαφύλαξης και παρουσίασης της πολιτιστικής κληρονομιάς, αλλά και ως έναν ζωντανό τόπο μάθησης, δημιουργίας, κοινωνικής συμμετοχής και συμπερίληψης. Όπως σημειώνεται, το μουσείο δεν είναι μόνο ένας χώρος που επισκεπτόμαστε για να γνωρίσουμε το παρελθόν, αλλά ένας χώρος που μας βοηθά να κατανοήσουμε το παρόν, να θέσουμε ερωτήματα και να διαμορφώσουμε τη σχέση μας με τον πολιτισμό και την κοινωνία. Το βιβλίο περιλαμβάνει πρόλογο του Δημήτρη Πλάντζου και επίμετρο της Αμαλίας Τσιτούρη. Για το βιβλίο και τις διαφορετικές όψεις της σχέσης μουσείου, εκπαίδευσης και κοινωνίας θα συζητήσουν: Ο συγγραφέας του βιβλίου, Στάθης Γκότσης. Ο Γιάννης Κουκουλάς, Επίκουρος Καθηγητής Οπτικού Πολιτισμού και Διεικονικών Προσεγγίσεων της Τέχνης στη Σχολή Ανθρωπιστικών Επιστημών στο Τμήμα Επιστημών της Προσχολικής Αγωγής και του Εκπαιδευτικού Σχεδιασμού του Πανεπιστημίου Αιγαίου. Η Λουκία Ορφανού, Εκπαιδευτικός, Πρόεδρος του Συνδέσμου Φιλολόγων Δωδεκανήσου. Η Πόλυ Χατζημάρκου, Ιστορικός Τέχνης, Πολιτιστική Διαχειρίστρια, Ειδική Σύμβουλος Δημάρχου Ρόδου σε θέματα πολιτισμού και πολιτιστικής διοίκησης. Ο Νίκος Χριστοδουλίδης, Αρχαιολόγος της Εφορείας Αρχαιοτήτων Δωδεκανήσου. Τη συζήτηση θα συντονίσει η Ειρήνη Συμιακού, Προϊσταμένη του Τμήματος Διεθνούς Κέντρου Συγγραφέων και Μεταφραστών Ρόδου της Διεύθυνσης Παιδείας & Νέας Γενιάς Δήμου Ρόδου. Εκπαιδευτική δράση για μαθητές Η παρουσία του συγγραφέα στη Ρόδο θα πλαισιωθεί και από εκπαιδευτική δράση την Πέμπτη 19 Νοεμβρίου 2026, με τη συμμετοχή μαθητών Δευτεροβάθμιας Εκπαίδευσης. Μέσα από την εκπαιδευτική αυτή συνάντηση, οι μαθητές θα έχουν την ευκαιρία να προσεγγίσουν τη σχέση μουσείου, εκπαίδευσης και κοινωνίας, να ανακαλύψουν τη σημασία της πολιτιστικής κληρονομιάς και να γνωρίσουν τις δυνατότητες του μουσείου ως χώρου βιωματικής μάθησης, παρατήρησης και δημιουργικής συμμετοχής. Με τη συγκεκριμένη πρωτοβουλία, το Διεθνές Κέντρο Συγγραφέων και Μεταφραστών Ρόδου ενισχύει τη σύνδεση του βιβλίου, της γνώσης και του πολιτισμού με την εκπαιδευτική κοινότητα, αναδεικνύοντας τη σημασία της συνεργασίας μεταξύ πολιτιστικών και εκπαιδευτικών φορέων. Η εκδήλωση είναι ανοιχτή στο κοινό. Πληροφορίες: Διεθνές Κέντρο Συγγραφέων και Μεταφραστών Ρόδου, τηλέφωνο 22410 28557. Συνδιοργάνωση: Διεθνές Κέντρο Συγγραφέων και Μεταφραστών Ρόδου – Βιβλιοπωλείο «Καραβάκι» Με την υποστήριξη φιλοξενίας: Ξενοδοχείο Semiramis City Hotel Ρόδου Εκδόσεις: Τόπος Χορηγός επικοινωνίας: Ραδιόφωνο Λυχνάρι",
+      "notesTranslated": "The International Writers’ and Translators’ Center of Rhodes, part of the Directorate of Education and New Generation of the Municipality of Rhodes, in collaboration with the \"Karavaki\" bookstore and Topos Publications, is organizing on Wednesday, November 18, 2026, at 18:00, the presentation of Stathis Gotsis’ book titled \"Museum, Education and Society.\" The event will take place in the New Wing of the Nestoridion Mansion of the Museum of Modern Greek Art of the Municipality of Rhodes and aims to initiate a substantial dialogue around the contemporary role of the museum, its relationship with education, and its connection with society. The book approaches museum education as an organized pedagogical process and highlights the museum not only as a space for preserving and presenting cultural heritage but also as a vibrant place for learning, creation, social participation, and inclusion. As noted, the museum is not just a place we visit to learn about the past, but a space that helps us understand the present, ask questions, and shape our relationship with culture and society. The book includes a prologue by Dimitris Plantzos and an afterword by Amalia Tsitouri. Discussing the book and the different facets of the museum, education, and society relationship will be: the author of the book, Stathis Gotsis; Giannis Koukoulas, Assistant Professor of Visual Culture and Inter-iconic Approaches to Art at the School of Humanities, Department of Preschool Education Sciences and Educational Design, University of the Aegean; Loukia Orfanou, Educator, President of the Association of Philologists of Dodecanese; Poly Hatzimarkou, Art Historian, Cultural Manager, Special Advisor to the Mayor of Rhodes on cultural affairs and cultural administration; and Nikos Christodoulidis, Archaeologist at the Ephorate of Antiquities of Dodecanese. The discussion will be moderated by Eirini Symiakou, Head of the Department of the International Writers’ and Translators’ Center of Rhodes of the Directorate of Education & New Generation of the Municipality of Rhodes.\n\nEducational activity for students\nThe author's presence in Rhodes will also be accompanied by an educational activity on Thursday, November 19, 2026, with the participation of Secondary Education students. Through this educational encounter, students will have the opportunity to explore the relationship between the museum, education, and society, discover the importance of cultural heritage, and learn about the museum's potential as a space for experiential learning, observation, and creative participation. With this initiative, the International Writers’ and Translators’ Center of Rhodes strengthens the connection of books, knowledge, and culture with the educational community, highlighting the importance of collaboration between cultural and educational institutions.\n\nThe event is open to the public.\nInformation: International Writers’ and Translators’ Center of Rhodes, telephone 22410 28557.\n\nCo-organization: International Writers’ and Translators’ Center of Rhodes – \"Karavaki\" Bookstore\nWith hospitality support from: Semiramis City Hotel Rhodes\nPublisher: Topos\nCommunication sponsor: Lychnari Radio",
+      "url": "https://www.rhodes.com.gr/ekdilosi/moyseio-ekpaideysi-kai-koinonia/",
+      "image": "img/Museum_Education_and_Society_5533381b956f.jpg",
+      "thumb": "img/Museum_Education_and_Society_5533381b956f_t.jpg",
+      "lat": 36.45422167346721,
+      "lng": 28.221600726287463
     },
     {
       "id": "fa5f1a9e72724a18be633f0b14a837c6",
@@ -396,6 +469,31 @@
       "thumb": "img/Diabetes_Awareness_and_Prevention_Campai_7885d2b85c8f_t.jpg",
       "lat": 36.44835550961018,
       "lng": 28.223604707600316
+    },
+    {
+      "id": "173848dfaf7442bfbbc16e28203d96b1",
+      "title": "Build Your Professional Profile: how to showcase your potential and stand out in the job market",
+      "titleOriginal": "Χτίσε το Επαγγελματικό σου Προφίλ: πώς αναδεικνύεις τις δυνατότητές σου και ξεχωρίζεις στην αγορά εργασίας",
+      "titleTranslated": "Build Your Professional Profile: how to showcase your potential and stand out in the job market",
+      "date": "2026-11-21",
+      "endDate": "",
+      "time": "18:00",
+      "recurWeekdays": [],
+      "location": "Ίδρυμα Υποτροφών Ρόδου «Εμμανουήλ & Μαίρης Σταματίου»",
+      "locationOriginal": "Ίδρυμα Υποτροφών Ρόδου «Εμμανουήλ & Μαίρης Σταματίου»",
+      "locationTranslated": "Ίδρυμα Υποτροφών Ρόδου «Εμμανουήλ & Μαίρης Σταματίου»",
+      "locationKey": "Ίδρυμα Υποτροφών Ρόδου «Εμμανουήλ & Μαίρης Σταματίου»",
+      "artist": "",
+      "organizer": "",
+      "category": [],
+      "notes": "The Emmanouil & Mary Stamatiou Rhodes Scholarship Foundation is organizing an event for professional development and the effective presentation of each candidate's qualifications and skills in the job market, on Saturday, November 21, 2026, at 6:00 PM, in the event hall of the E. & M. Stamatiou Foundation. The speaker will be Mr. Giorgos Vasiloglou, Personnel Selection Consultant (Recruiter), who will present the current reality of the job market and explain what employers are looking for, how they evaluate candidates, and how one can highlight their potential and enhance their professional presence. The event is aimed at young people at the beginning of their professional careers, as well as those who wish to explore new professional opportunities. During the speech, practical issues will be discussed, such as: Job search and evaluation. Writing an effective resume, even without prior work experience. The skills employers seek and how they can be demonstrated in practice. Creating a professional profile and utilizing LinkedIn, social media, and digital footprint. Preparing for a job interview, communication, and effective self-presentation. The possibilities of utilizing artificial intelligence (AI) in job searching and professional preparation. Special emphasis will be given to the dynamic experiential workshop \"Be a Recruiter for an Hour,\" through which participants will have the opportunity to approach the personnel selection process from the employer's perspective, evaluate hypothetical candidate profiles, practice, and identify what makes a candidate stand out.",
+      "notesOriginal": "Το Κοινωφελές Ίδρυμα Υποτροφιών Ρόδου Εμμανουήλ & Μαίρης Σταματίου διοργανώνει εκδήλωση για την επαγγελματική ανάπτυξη και την αποτελεσματική παρουσίαση των προσόντων και των δεξιοτήτων κάθε υποψηφίου στην αγορά εργασίας, το Σάββατο 21 Νοεμβρίου 2026, στις 18:00, στην αίθουσα εκδηλώσεων του Ιδρύματος Ε. & Μ. Σταματίου. Ομιλητής θα είναι ο κ. Γιώργος Βασίλογλου, Σύμβουλος Επιλογής Προσωπικού (Recruiter), ο οποίος θα παρουσιάσει τη σύγχρονη πραγματικότητα της αγοράς εργασίας και θα εξηγήσει τι αναζητούν οι εργοδότες, πώς αξιολογούν τους υποψηφίους και με ποιους τρόπους μπορεί κανείς να αναδείξει τις δυνατότητές του και να ενισχύσει την επαγγελματική του παρουσία. Η εκδήλωση απευθύνεται σε νέους που βρίσκονται στην αρχή της επαγγελματικής τους πορείας, αλλά και σε όσους επιθυμούν να διερευνήσουν νέες επαγγελματικές ευκαιρίες. Στη διάρκεια της ομιλίας θα συζητηθούν πρακτικά ζητήματα, όπως: Η αναζήτηση και η αξιολόγηση θέσεων εργασίας. Η σύνταξη ενός αποτελεσματικού βιογραφικού, ακόμη και χωρίς προηγούμενη εργασιακή εμπειρία. Οι δεξιότητες που αναζητούν οι εργοδότες και οι τρόποι με τους οποίους μπορούν να αποδειχθούν στην πράξη. Η δημιουργία επαγγελματικού προφίλ και η αξιοποίηση του LinkedIn, των μέσων κοινωνικής δικτύωσης και του ψηφιακού αποτυπώματος. Η προετοιμασία για μια συνέντευξη εργασίας, η επικοινωνία και η αποτελεσματική αυτοπαρουσίαση. Οι δυνατότητες αξιοποίησης της τεχνητής νοημοσύνης (AI) στην αναζήτηση εργασίας και στην επαγγελματική προετοιμασία. Ιδιαίτερη έμφαση θα δοθεί στο δυναμικό βιωματικό εργαστήριο «Γίνε recruiter για μία ώρα», μέσα από το οποίο οι συμμετέχοντες θα έχουν την ευκαιρία να προσεγγίσουν τη διαδικασία επιλογής προσωπικού από την πλευρά του εργοδότη, να αξιολογήσουν υποθετικά προφίλ υποψηφίων, να δοκιμάσουν στην πράξη και να αναγνωρίσουν ποια στοιχεία κάνουν έναν υποψήφιο να ξεχωρίζει.",
+      "notesTranslated": "The Emmanouil & Mary Stamatiou Rhodes Scholarship Foundation is organizing an event for professional development and the effective presentation of each candidate's qualifications and skills in the job market, on Saturday, November 21, 2026, at 6:00 PM, in the event hall of the E. & M. Stamatiou Foundation. The speaker will be Mr. Giorgos Vasiloglou, Personnel Selection Consultant (Recruiter), who will present the current reality of the job market and explain what employers are looking for, how they evaluate candidates, and how one can highlight their potential and enhance their professional presence. The event is aimed at young people at the beginning of their professional careers, as well as those who wish to explore new professional opportunities. During the speech, practical issues will be discussed, such as: Job search and evaluation. Writing an effective resume, even without prior work experience. The skills employers seek and how they can be demonstrated in practice. Creating a professional profile and utilizing LinkedIn, social media, and digital footprint. Preparing for a job interview, communication, and effective self-presentation. The possibilities of utilizing artificial intelligence (AI) in job searching and professional preparation. Special emphasis will be given to the dynamic experiential workshop \"Be a Recruiter for an Hour,\" through which participants will have the opportunity to approach the personnel selection process from the employer's perspective, evaluate hypothetical candidate profiles, practice, and identify what makes a candidate stand out.",
+      "url": "https://www.rhodes.com.gr/ekdilosi/chtise-to-epaggelmatiko-soy-profil-pos-anadeiknyeis-tis-dynatotites-soy-kai-xechorizeis-stin-agora-ergasias/",
+      "image": "img/Build_Your_Professional_Profile_how_to_s_173848dfaf74.jpg",
+      "thumb": "img/Build_Your_Professional_Profile_how_to_s_173848dfaf74_t.jpg",
+      "lat": 36.448724577840316,
+      "lng": 28.223067485255264
     },
     {
       "id": "0d3be1c2bd2b48da9e8b927d500c3bb9",
@@ -818,6 +916,18 @@
       "lng": 28.226752281188965,
       "map": "https://www.google.com/maps?q=36.44408371405006,28.226752281188965"
     },
+    "Ίδρυμα Υποτροφών Ρόδου «Εμμανουήλ & Μαίρης Σταματίου»": {
+      "name": "Ίδρυμα Υποτροφών Ρόδου «Εμμανουήλ & Μαίρης Σταματίου»",
+      "website": "",
+      "notes": "Address: Γρ. Λαμπράκη 14, Ρόδος 851 00, Ελλάδα",
+      "media": "",
+      "mediaRows": [],
+      "nameOriginal": "Ίδρυμα Υποτροφών Ρόδου «Εμμανουήλ & Μαίρης Σταματίου»",
+      "nameTranslated": "",
+      "lat": 36.448724577840316,
+      "lng": 28.223067485255264,
+      "map": "https://www.google.com/maps?q=36.448724577840316,28.223067485255264"
+    },
     "Ψυχολο-Υγεία Messy Play Ρόδου": {
       "name": "Ψυχολο-Υγεία Messy Play Ρόδου",
       "website": "",
@@ -937,6 +1047,16 @@
       "lat": 36.2673565,
       "lng": 28.0538648,
       "map": "https://www.google.com/maps/place/Primary+School+of+Archipoli/@36.2673565,28.0538648,935m/data=!3m2!1e3!4b1!4m6!3m5!1s0x1495717f26c29a85:0x19a5f6e034187fd1!8m2!3d36.2673565!4d28.0564451!16s%2Fg%2F1260k4s1m?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D"
+    },
+    "Detroit live stage": {
+      "name": "Detroit live stage",
+      "website": "",
+      "notes": "",
+      "media": "",
+      "mediaRows": [],
+      "nameOriginal": "Detroit live stage",
+      "nameTranslated": "",
+      "map": ""
     }
   }
 }
