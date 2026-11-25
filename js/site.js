@@ -1611,7 +1611,7 @@
       <div class="body">
         <h3>${escapeHtml(ev.title || "Untitled")}</h3>
         <p class="meta${eventKind(ev) === "oneoff" ? "" : " meta-when-ongoing"}">${escapeHtml(fmtWhen(ev))}</p>
-        <p class="meta">${escapeHtml(ev.location || "")}</p>
+        <p class="meta">${escapeHtml([ev.location || "", priceShouldShow(ev.price) ? String(ev.price).trim() : ""].filter(Boolean).join(" · "))}</p>
         <div class="card-chips">${cats}</div>
       </div>`;
     article.prepend(starButton(ev.id));
