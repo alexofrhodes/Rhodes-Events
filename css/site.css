@@ -12,7 +12,8 @@
   --shadow: 0 8px 24px rgba(28, 25, 23, 0.08);
   --radius: 18px;
   --radius-sm: 12px;
-  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Monospace everywhere, like the other Rhodes apps. */
+  --font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   --surface: #ffffff;
   --elevated: #ffffff;
   --overlay: rgba(28, 25, 23, 0.45);
@@ -5207,3 +5208,47 @@ body.detail-open {
 #view-directory[hidden] {
   display: none !important;
 }
+
+
+/* ---------- Rhodes apps additions (2026-11) ---------- */
+.moved-to-more,
+.moved-to-filters { display: none !important; }
+
+.ev-apps { display: inline-flex; align-items: center; }
+.ev-apps .rk-apps > summary { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+
+.more-dd-menu { min-width: 12rem; }
+.more-dd-label { padding: 0.3rem 0.55rem 0.1rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.more-theme-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.2rem; padding: 0 0.3rem 0.3rem; border-bottom: 1px solid var(--line); margin-bottom: 0.15rem; }
+.views-dd-menu .more-theme-row button { text-align: center; padding: 0.35rem 0.2rem; border: 1px solid var(--line); font-size: 0.75rem; }
+.views-dd-menu .more-theme-row button[aria-pressed="true"] { background: var(--teal-soft); color: var(--teal-dark); border-color: var(--teal); }
+#more-dd .share-dd-menu { right: 0; top: calc(100% + 0.3rem); }
+
+#filters-dd { position: relative; }
+#btn-filters { position: relative; }
+#btn-filters.active { background: var(--teal-soft); color: var(--teal-dark); border-color: var(--teal); }
+.filters-badge {
+  position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; background: var(--teal); color: #fff; font-size: 10px; font-weight: 700;
+  line-height: 16px; text-align: center;
+}
+.filters-dd-menu { min-width: 13rem; }
+.filters-dd-menu [data-filter-count] { float: right; color: var(--muted); font-weight: 600; }
+.filters-dd-menu .filters-clear { border-top: 1px solid var(--line) !important; margin-top: 0.15rem; color: var(--muted); }
+
+.directory-sort { display: inline-flex; align-items: center; gap: 0.3rem; margin-left: auto; font-size: 0.78rem; }
+.directory-sort-label { color: var(--muted); }
+.directory-sort button { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 0.25rem 0.6rem; font: inherit; font-size: 0.75rem; cursor: pointer; }
+.directory-sort button[aria-pressed="true"] { background: var(--teal-soft); color: var(--teal-dark); border-color: var(--teal); }
+.directory-tab[hidden] { display: none !important; }
+
+.list-group-head { grid-column: 1 / -1; margin: 0.6rem 0.2rem 0.1rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.event-table tr.list-group-row td { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); background: transparent; padding-top: 0.8rem; }
+.meta-when-ongoing { color: var(--teal-dark); font-weight: 600; }
+
+.settings-order { display: grid; gap: 0.3rem; }
+.settings-order-list { list-style: none; margin: 0.2rem 0 0; padding: 0; display: grid; gap: 0.25rem; }
+.settings-order-list li { display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.45rem; border: 1px solid var(--line); border-radius: 8px; background: var(--card); font-size: 0.8rem; }
+.settings-order-list li span { flex: 1; }
+.settings-order-list button { border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 6px; width: 1.8rem; height: 1.6rem; cursor: pointer; font: inherit; }
+.settings-order-list button:disabled { opacity: 0.35; cursor: default; }

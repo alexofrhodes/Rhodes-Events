@@ -82,8 +82,15 @@
     detailFromEntity: null,
     directoryTab: "artists",
     directorySearch: "",
+    directorySort: "count",
     entityInfoCollapsed: false,
+    /* List order: "date" (soonest first) or "grouped" (groups in groupOrder, each by date). */
+    listOrder: "date",
+    groupOrder: ["oneoff", "ongoing", "weekly"],
   };
+
+  const GROUP_KEYS = ["oneoff", "ongoing", "weekly"];
+  const GROUP_LABELS = { oneoff: "One-off events", ongoing: "Ongoing (exhibitions, runs)", weekly: "Weekly / recurring" };
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -466,6 +473,15 @@
       if (typeof data.entityInfoCollapsed === "boolean") {
         state.entityInfoCollapsed = data.entityInfoCollapsed;
       }
+      if (data.listOrder === "date" || data.listOrder === "grouped") state.listOrder = data.listOrder;
+      if (Array.isArray(data.groupOrder)) {
+        const order = data.groupOrder.filter((k) => GROUP_KEYS.includes(k));
+        GROUP_KEYS.forEach((k) => {
+          if (!order.includes(k)) order.push(k);
+        });
+        state.groupOrder = order;
+      }
+      if (data.directorySort === "count" || data.directorySort === "az") state.directorySort = data.directorySort;
     } catch (_) {
       /* ignore */
     }
@@ -497,6 +513,9 @@
           hiddenViews: [...state.hiddenViews],
           hiddenFilters: [...state.hiddenFilters],
           entityInfoCollapsed: state.entityInfoCollapsed,
+          listOrder: state.listOrder,
+          groupOrder: state.groupOrder,
+          directorySort: state.directorySort,
         })
       );
     } catch (_) {
@@ -995,19 +1014,68 @@
     return true;
   }
 
+  /** "oneoff" | "ongoing" (multi-day run, e.g. an exhibition) | "weekly" (runs on set weekdays). */
+  function eventKind(ev) {
+    if (!isMultiDay(ev)) return "oneoff";
+    return normalizeRecurWeekdays(ev.recurWeekdays).length ? "weekly" : "ongoing";
+  }
+
+  /** Next day on or after today (or after the start) that a multi-day event happens. */
+  function nextOccurrence(ev) {
+    const today = todayISO();
+    let d = parseISO(eventStart(ev) > today ? eventStart(ev) : today);
+    const last = parseISO(eventEnd(ev));
+    for (let i = 0; d && last && d <= last && i < 400; i += 1) {
+      const iso = isoDate(d);
+      if (eventOccursOn(ev, iso)) return iso;
+      d = addDays(d, 1);
+    }
+    return "";
+  }
+
+  function fmtDay(iso, withYear = false) {
+    const d = parseISO(iso);
+    if (!d) return "";
+    const opts = { weekday: "short", month: "short", day: "numeric" };
+    if (withYear) opts.year = "numeric";
+    return d.toLocaleDateString(undefined, opts);
+  }
+
+  function fmtShortDay(iso) {
+    const d = parseISO(iso);
+    return d ? d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "";
+  }
+
+  /** Card / list line. Runs read as what happens next, not as a long date range. */
   function fmtWhen(ev) {
     const start = parseISO(ev.date);
     if (!start) return ev.time || "";
-    const opts = { weekday: "short", month: "short", day: "numeric", year: "numeric" };
-    let text = start.toLocaleDateString(undefined, opts);
-    if (ev.endDate && ev.endDate !== ev.date) {
-      const end = parseISO(ev.endDate);
-      if (end) text += ` – ${end.toLocaleDateString(undefined, opts)}`;
+    const kind = eventKind(ev);
+    const time = ev.time ? ` · ${ev.time}` : "";
+    if (kind === "oneoff") {
+      return `${fmtDay(ev.date, true)}${time}`;
     }
-    const recur = formatRecurWeekdays(ev);
-    if (recur) text += ` · ${recur}`;
-    if (ev.time) text += ` · ${ev.time}`;
-    return text;
+    const today = todayISO();
+    const until = `until ${fmtShortDay(eventEnd(ev))}`;
+    if (kind === "weekly") {
+      const next = nextOccurrence(ev);
+      const days = formatRecurWeekdays(ev);
+      const nextBit = next ? (next === today ? " · today" : ` · next ${fmtDay(next)}`) : "";
+      return `Every ${days}${time}${nextBit} · ${until}`;
+    }
+    if (eventStart(ev) <= today) return `Open now${time} · ${until}`;
+    return `From ${fmtDay(ev.date)}${time} · ${until}`;
+  }
+
+  /** Order a list: soonest first, or in the visitor's group order (Settings → Order). */
+  function orderForList(list) {
+    const sorted = list.slice().sort(sortSoonest);
+    if (state.listOrder !== "grouped") return { flat: sorted, groups: null };
+    const groups = state.groupOrder.map((key) => ({ key, label: GROUP_LABELS[key], items: [] }));
+    const byKey = Object.fromEntries(groups.map((g) => [g.key, g]));
+    sorted.forEach((ev) => byKey[eventKind(ev)].items.push(ev));
+    const kept = groups.filter((g) => g.items.length);
+    return { flat: kept.flatMap((g) => g.items), groups: kept };
   }
 
   function imageUrl(ev, thumb) {
@@ -1141,6 +1209,7 @@
     ensureFocusMonth();
     saveSettings();
     updateHideToggleCounts();
+    syncFiltersButton();
     renderAll();
   }
 
@@ -1541,7 +1610,7 @@
       <div class="thumb">${imgHtml}</div>
       <div class="body">
         <h3>${escapeHtml(ev.title || "Untitled")}</h3>
-        <p class="meta">${escapeHtml(fmtWhen(ev))}</p>
+        <p class="meta${eventKind(ev) === "oneoff" ? "" : " meta-when-ongoing"}">${escapeHtml(fmtWhen(ev))}</p>
         <p class="meta">${escapeHtml(ev.location || "")}</p>
         <div class="card-chips">${cats}</div>
       </div>`;
@@ -1613,7 +1682,7 @@
   }
 
   function setBrandTitle(count) {
-    const base = (state.data && state.data.title) || "Events";
+    const base = (state.data && state.data.title) || "Rhodes Events";
     const titleEl = $("#site-title");
     if (!titleEl) return;
     if (count == null || count === "") {
@@ -1701,10 +1770,12 @@
   function renderList() {
     ensureFocusMonth();
     updateMonthNav();
-    const monthEvents =
+    const ordered = orderForList(
       state.view === "starred"
-        ? state.filtered.slice().sort(sortSoonest)
-        : state.filtered.filter((ev) => overlapsMonth(ev, state.focusMonth)).sort(sortSoonest);
+        ? state.filtered.slice()
+        : state.filtered.filter((ev) => overlapsMonth(ev, state.focusMonth))
+    );
+    const monthEvents = ordered.flat;
 
     const cards = $("#list-cards");
     const tbody = $("#list-table-body");
@@ -1714,11 +1785,24 @@
     const useTable = state.density === "table";
     cards.classList.toggle("hidden", useTable);
     tableWrap.classList.toggle("hidden", !useTable);
-    if (useTable) {
-      monthEvents.forEach((ev) => tbody.appendChild(tableRow(ev)));
-    } else {
-      monthEvents.forEach((ev) => cards.appendChild(cardButton(ev)));
-    }
+    const groups = ordered.groups || [{ key: "", label: "", items: monthEvents }];
+    const showHeads = Boolean(ordered.groups) && ordered.groups.length > 1;
+    groups.forEach((group) => {
+      if (showHeads) {
+        if (useTable) {
+          const tr = document.createElement("tr");
+          tr.className = "list-group-row";
+          tr.innerHTML = `<td colspan="7">${escapeHtml(group.label)}</td>`;
+          tbody.appendChild(tr);
+        } else {
+          const h = document.createElement("h3");
+          h.className = "list-group-head";
+          h.textContent = group.label;
+          cards.appendChild(h);
+        }
+      }
+      group.items.forEach((ev) => (useTable ? tbody : cards).appendChild(useTable ? tableRow(ev) : cardButton(ev)));
+    });
 
     setBrandTitle(monthEvents.length);
     clearResultCount();
@@ -2372,10 +2456,11 @@
     const empty = $("#posters-empty");
     if (!host) return;
     host.innerHTML = "";
-    const monthEvents = state.filtered
-      .filter((ev) => overlapsMonth(ev, state.focusMonth))
-      .filter((ev) => imageUrl(ev, false) || imageUrl(ev, true))
-      .sort(sortSoonest);
+    const monthEvents = orderForList(
+      state.filtered
+        .filter((ev) => overlapsMonth(ev, state.focusMonth))
+        .filter((ev) => imageUrl(ev, false) || imageUrl(ev, true))
+    ).flat;
     monthEvents.forEach((ev) => {
       const img = imageUrl(ev, false) || imageUrl(ev, true);
       const btn = document.createElement("button");
@@ -2547,7 +2632,7 @@
       <div class="thumb" style="${thumb ? `background-image:url('${escapeAttr(thumb)}')` : ""}"></div>
       <div>
         <h3>${escapeHtml(ev.title || "")}</h3>
-        <p class="meta">${escapeHtml(fmtWhen(ev))}</p>
+        <p class="meta">${escapeHtml(fmtWhen(ev)) }</p>
         <p class="meta">${escapeHtml(ev.location || "")}</p>
       </div>
       <div class="sheet-actions" aria-label="Event actions">
@@ -2670,22 +2755,41 @@
     }
   }
 
+  function directoryNames(tab) {
+    const store = tab === "organizers" ? state.organizers : tab === "venues" ? state.venueCatalog : state.artists;
+    const names = new Set(
+      Object.keys(store || {})
+        .map((n) => String(n || "").trim())
+        .filter(Boolean)
+    );
+    if (tab === "venues") {
+      state.events.forEach((ev) => {
+        const key = (ev.locationKey || ev.location || "").trim();
+        if (key) names.add(key);
+      });
+    }
+    return names;
+  }
+
   function renderDirectory() {
     const list = $("#directory-list");
     const empty = $("#directory-empty");
     if (!list) return;
-    const tab =
-      state.directoryTab === "organizers"
-        ? "organizers"
-        : state.directoryTab === "venues"
-          ? "venues"
-          : "artists";
+    // Tabs with no entries are hidden; an empty tab falls through to the first one with entries.
+    const tabs = ["artists", "organizers", "venues"];
+    const filled = tabs.filter((t) => directoryNames(t).size > 0);
+    let tab = tabs.includes(state.directoryTab) ? state.directoryTab : "artists";
+    if (filled.length && !filled.includes(tab)) tab = filled[0];
     state.directoryTab = tab;
     $$("[data-directory-tab]").forEach((btn) => {
       const on = btn.dataset.directoryTab === tab;
+      btn.hidden = filled.length > 0 && !filled.includes(btn.dataset.directoryTab);
       btn.classList.toggle("active", on);
       btn.setAttribute("aria-selected", on ? "true" : "false");
     });
+    $$("[data-directory-sort]").forEach((btn) =>
+      btn.setAttribute("aria-pressed", String(btn.dataset.directorySort === state.directorySort))
+    );
     const searchInput = $("#directory-search");
     if (searchInput && searchInput.value !== state.directorySearch) {
       searchInput.value = state.directorySearch;
@@ -2717,6 +2821,8 @@
       });
     }
     const q = state.directorySearch.trim().toLowerCase();
+    const label = (n) => entityDisplayName(findEntity(kind, n) || { name: n });
+    const counts = new Map([...nameSet].map((n) => [n, eventsForEntity(kind, n).length]));
     const names = [...nameSet]
       .filter((n) => {
         if (!q) return true;
@@ -2725,9 +2831,8 @@
         return hay.includes(q);
       })
       .sort((a, b) =>
-        entityDisplayName(findEntity(kind, a) || { name: a }).localeCompare(
-          entityDisplayName(findEntity(kind, b) || { name: b })
-        )
+        (state.directorySort === "count" ? counts.get(b) - counts.get(a) : 0) ||
+        label(a).localeCompare(label(b), undefined, { sensitivity: "base" })
       );
     list.innerHTML = "";
     if (!names.length) {
@@ -2746,7 +2851,7 @@
       title.textContent = entityDisplayName(ent) || name;
       const meta = document.createElement("span");
       meta.className = "directory-row-meta";
-      const upcoming = eventsForEntity(kind, name).length;
+      const upcoming = counts.get(name) || 0;
       meta.textContent = upcoming ? `${upcoming} upcoming` : "";
       btn.append(title, meta);
       btn.addEventListener("click", () => openEntity(kind, name));
@@ -3354,6 +3459,11 @@
   }
 
   function eventShareUrl(ev) {
+    const dir = location.pathname.replace(/[^/]*$/, "");
+    // Published event pages (e/<id>.html) carry the event's own title and poster for link previews.
+    if (state.data && state.data.eventPages && ev.pageId) {
+      return `${location.origin}${dir}e/${encodeURIComponent(ev.pageId)}.html`;
+    }
     const base = `${location.origin}${location.pathname}${location.search}`;
     return `${base}#e=${encodeURIComponent(ev.id)}`;
   }
@@ -4308,6 +4418,20 @@
       html += `<label><input type="checkbox" data-show-filter="${key}"${checked} /> ${FILTER_LABELS[key] || key}</label>`;
     });
     html += "</div></div></div>";
+    html += '<div class="settings-row settings-block settings-order"><label>Order</label><div class="settings-choices">';
+    html += `<button type="button" data-list-order="date" class="${state.listOrder === "date" ? "active" : ""}">By date</button>`;
+    html += `<button type="button" data-list-order="grouped" class="${state.listOrder === "grouped" ? "active" : ""}">Grouped</button>`;
+    html += "</div>";
+    if (state.listOrder === "grouped") {
+      html += '<ol class="settings-order-list">';
+      state.groupOrder.forEach((key, i) => {
+        html += `<li><span>${escapeHtml(GROUP_LABELS[key])}</span>`;
+        html += `<button type="button" data-group-move="${key}" data-dir="-1" aria-label="Move up"${i === 0 ? " disabled" : ""}>↑</button>`;
+        html += `<button type="button" data-group-move="${key}" data-dir="1" aria-label="Move down"${i === state.groupOrder.length - 1 ? " disabled" : ""}>↓</button></li>`;
+      });
+      html += "</ol>";
+    }
+    html += "</div>";
     const infoCollapsed = state.entityInfoCollapsed ? " checked" : "";
     html += `<label class="settings-check"><input type="checkbox" data-entity-info-collapsed${infoCollapsed} /> Collapse Info by default</label>`;
     popup.innerHTML = html;
@@ -4341,6 +4465,27 @@
         saveSettings();
       })
     );
+    popup.querySelectorAll("[data-list-order]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        state.listOrder = btn.dataset.listOrder === "grouped" ? "grouped" : "date";
+        saveSettings();
+        renderSettingsPopup();
+        renderAll();
+      })
+    );
+    popup.querySelectorAll("[data-group-move]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const order = state.groupOrder.slice();
+        const i = order.indexOf(btn.dataset.groupMove);
+        const j = i + Number(btn.dataset.dir);
+        if (i < 0 || j < 0 || j >= order.length) return;
+        [order[i], order[j]] = [order[j], order[i]];
+        state.groupOrder = order;
+        saveSettings();
+        renderSettingsPopup();
+        renderAll();
+      })
+    );
     popup.querySelector("[data-entity-info-collapsed]")?.addEventListener("change", (e) => {
       state.entityInfoCollapsed = Boolean(e.target.checked);
       saveSettings();
@@ -4371,6 +4516,14 @@
 
   function registerPwa() {
     if (!("serviceWorker" in navigator)) return;
+    const localTest =
+      /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && !/[?&]sw=1/.test(location.search);
+    if (localTest) {
+      // Local testing (_serve.bat): no offline worker, so edits show on reload. Add ?sw=1 to test offline.
+      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {});
+      if (window.caches) caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
+      return;
+    }
     const secure =
       location.protocol === "https:" ||
       location.hostname === "localhost" ||
@@ -4416,6 +4569,142 @@
     window.addEventListener("appinstalled", () => {
       state.deferredInstall = null;
       updateInstallUi();
+    });
+  }
+
+  /* ---------- More menu (theme, print, share, settings, about) ---------- */
+  function closeMoreMenu() {
+    $("#more-dd-menu")?.classList.add("hidden");
+    $("#more-dd-btn")?.setAttribute("aria-expanded", "false");
+  }
+
+  function syncMoreTheme() {
+    $$("[data-more-theme]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.moreTheme === state.theme)));
+  }
+
+  function bindMoreMenu() {
+    const btn = $("#more-dd-btn");
+    const menu = $("#more-dd-menu");
+    if (!btn || !menu) return;
+    // The share menu opens under the More button now.
+    const share = $("#share-dd-menu");
+    if (share) $("#more-dd").appendChild(share);
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeActionDropdowns();
+      closeFiltersMenu();
+      const open = menu.classList.contains("hidden");
+      menu.classList.toggle("hidden", !open);
+      btn.setAttribute("aria-expanded", String(open));
+      syncMoreTheme();
+      const print = menu.querySelector('[data-more="print"]');
+      if (print) {
+        const ok = Boolean(state.printEnabled) && state.view !== "rails";
+        print.disabled = !ok;
+        print.title = ok ? "" : "Print is not available in this view";
+      }
+    });
+    menu.addEventListener("click", async (e) => {
+      const theme = e.target.closest("[data-more-theme]");
+      if (theme) {
+        e.stopPropagation();
+        setTheme(theme.dataset.moreTheme);
+        syncMoreTheme();
+        return;
+      }
+      const item = e.target.closest("[data-more]");
+      if (!item) return;
+      e.stopPropagation();
+      closeMoreMenu();
+      const what = item.dataset.more;
+      if (what === "print") openPrintPreview();
+      else if (what === "settings") openSettingsPopup();
+      else if (what === "about") {
+        updateInstallUi();
+        $("#about").classList.remove("hidden");
+      } else if (what === "share") {
+        if (navigator.share && window.matchMedia("(pointer: coarse)").matches) await shareSiteNative();
+        else openShareDropdown();
+      }
+    });
+  }
+
+  /* ---------- Filters menu (categories, venues, all-day / multi-day) ---------- */
+  function closeFiltersMenu() {
+    $("#filters-dd-menu")?.classList.add("hidden");
+    $("#btn-filters")?.setAttribute("aria-expanded", "false");
+  }
+
+  function filterHiddenBySettings(sel) {
+    const el = $(sel);
+    return !el || el.classList.contains("ui-hidden") || el.classList.contains("hidden");
+  }
+
+  function syncFiltersButton() {
+    const btn = $("#btn-filters");
+    if (!btn) return;
+    const n = state.categories.size + state.venues.size + (state.hideAllDay ? 1 : 0) + (state.hideMultiDay ? 1 : 0);
+    btn.classList.toggle("active", n > 0);
+    const badge = $("#filters-badge");
+    if (badge) {
+      badge.textContent = String(n);
+      badge.classList.toggle("hidden", n === 0);
+    }
+    const counts = {
+      cats: state.categories.size,
+      venues: state.venues.size,
+      toggles: (state.hideAllDay ? 1 : 0) + (state.hideMultiDay ? 1 : 0),
+    };
+    $$("[data-filter-count]").forEach((el) => {
+      const c = counts[el.dataset.filterCount] || 0;
+      el.textContent = c ? String(c) : "";
+    });
+    const map = { cats: "#btn-cats", venues: "#btn-venues", toggles: "#btn-event-toggles" };
+    let any = false;
+    Object.entries(map).forEach(([key, sel]) => {
+      const item = $(`[data-open-filter="${key}"]`);
+      const off = filterHiddenBySettings(sel);
+      if (item) item.classList.toggle("hidden", off);
+      if (!off) any = true;
+    });
+    $("#filters-dd")?.classList.toggle("hidden", !any);
+    $('[data-open-filter="clear"]')?.classList.toggle("hidden", n === 0);
+  }
+
+  function bindFiltersMenu() {
+    const btn = $("#btn-filters");
+    const menu = $("#filters-dd-menu");
+    if (!btn || !menu) return;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeActionDropdowns();
+      closeMoreMenu();
+      syncFiltersButton();
+      const open = menu.classList.contains("hidden");
+      menu.classList.toggle("hidden", !open);
+      btn.setAttribute("aria-expanded", String(open));
+    });
+    menu.addEventListener("click", (e) => {
+      const item = e.target.closest("[data-open-filter]");
+      if (!item) return;
+      e.stopPropagation();
+      closeFiltersMenu();
+      const what = item.dataset.openFilter;
+      if (what === "cats") toggleFilterPopup("#cat-popup", "#btn-filters", e);
+      else if (what === "venues") toggleFilterPopup("#loc-popup", "#btn-filters", e);
+      else if (what === "toggles") toggleFilterPopup("#toggles-popup", "#btn-filters", e);
+      else if (what === "clear") {
+        clearCategoryFilter();
+        clearLocationFilter();
+        state.hideAllDay = false;
+        state.hideMultiDay = false;
+        const a = $("#hide-allday");
+        const m = $("#hide-multiday");
+        if (a) a.checked = false;
+        if (m) m.checked = false;
+        updateTogglesButton();
+        applyFilters();
+      }
     });
   }
 
@@ -4486,8 +4775,27 @@
     document.addEventListener("click", (e) => {
       if (!e.target.closest("#lang-dd")) closeLangDropdown();
       if (!e.target.closest("#theme-dd")) closeThemeDropdown();
-      if (!e.target.closest("#share-dd")) closeShareDropdown();
+      if (!e.target.closest("#share-dd") && !e.target.closest("#more-dd")) closeShareDropdown();
+      if (!e.target.closest("#more-dd")) closeMoreMenu();
+      if (!e.target.closest("#filters-dd")) closeFiltersMenu();
     });
+    bindMoreMenu();
+    bindFiltersMenu();
+    $$("[data-directory-sort]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        state.directorySort = btn.dataset.directorySort === "az" ? "az" : "count";
+        saveSettings();
+        renderDirectory();
+      })
+    );
+    if (window.RK) {
+      window.RK.switcher($("#ev-apps"), "events");
+      window.RK.whatsNew(
+        "events",
+        "2026.11",
+        "Rhodes Events joins the Rhodes apps: a tidier header, \u201cuntil\u201d dates for exhibitions and weekly nights, and Settings \u2192 Order."
+      );
+    }
     $("#btn-print")?.addEventListener("click", (e) => {
       e.stopPropagation();
       openPrintPreview();
@@ -4757,12 +5065,13 @@
       state.data = await res.json();
     } catch (_) {
       state.data = {
-        title: "Events",
+        title: "Rhodes Events",
         events: [],
         center: { lat: 36.451456, lng: 28.2234119, zoom: 12 },
       };
     }
-    document.title = state.data.title || "Events";
+    if (!state.data.title || state.data.title === "Events") state.data.title = "Rhodes Events";
+    document.title = state.data.title;
     setBrandTitle();
     state.rawEvents = (Array.isArray(state.data.events) ? state.data.events : []).slice();
     state.artists = state.data.artists && typeof state.data.artists === "object" ? state.data.artists : {};

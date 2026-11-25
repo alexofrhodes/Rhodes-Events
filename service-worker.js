@@ -1,5 +1,5 @@
 /* PWA: precache app shell; network-first so republish updates show. */
-const SHELL = "events-shell-v112";
+const SHELL = "events-shell-v113";
 const SHELL_URLS = [
   "./",
   "index.html",
@@ -11,6 +11,13 @@ const SHELL_URLS = [
   "icons/site-qr.png",
   "icons/flag-gb.svg",
   "icons/flag-gr.svg",
+  "vendor/rhodes-kit/rk.css",
+  "vendor/rhodes-kit/rk.js",
+  "vendor/leaflet/leaflet.css",
+  "vendor/leaflet/leaflet.js",
+  "vendor/leaflet.markercluster/MarkerCluster.css",
+  "vendor/leaflet.markercluster/MarkerCluster.Default.css",
+  "vendor/leaflet.markercluster/leaflet.markercluster.js",
 ];
 
 function isShellPath(path) {
@@ -24,7 +31,8 @@ function isShellPath(path) {
     path.endsWith("/icons/icon-512.png") ||
     path.endsWith("/icons/site-qr.png") ||
     path.endsWith("/icons/flag-gb.svg") ||
-    path.endsWith("/icons/flag-gr.svg")
+    path.endsWith("/icons/flag-gr.svg") ||
+    path.includes("/vendor/")
   );
 }
 
@@ -88,6 +96,9 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   const path = url.pathname;
+
+  // Event share pages (e/<id>.html) just forward to the app: never cache them as index.html.
+  if (path.includes("/e/")) return;
 
   if (req.mode === "navigate" || isShellPath(path)) {
     event.respondWith(networkFirst(req, req.mode === "navigate" ? "index.html" : req));

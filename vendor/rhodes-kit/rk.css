@@ -1,0 +1,112 @@
+/* Rhodes kit — shared tokens + components. Monospace everywhere. */
+:root {
+  --rk-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --rk-1: 4px; --rk-2: 8px; --rk-3: 12px; --rk-4: 16px; --rk-5: 24px;
+  --rk-tap: 44px;
+  --rk-radius: 12px;
+}
+
+/* Dark mode: whole-page inversion with media re-inverted. Quick and consistent across all sites. */
+html[data-rk-theme="dark"] {
+  /* No color-scheme: dark here: the inversion expects light native controls, else they end up dark-on-dark. */
+  filter: invert(0.92) hue-rotate(180deg);
+  background: #fff;
+}
+html[data-rk-theme="dark"] img,
+html[data-rk-theme="dark"] video,
+html[data-rk-theme="dark"] picture,
+html[data-rk-theme="dark"] canvas,
+html[data-rk-theme="dark"] iframe,
+html[data-rk-theme="dark"] .leaflet-tile-pane,
+html[data-rk-theme="dark"] [style*="background-image"],
+html[data-rk-theme="dark"] .rk-keep-colors {
+  filter: invert(1) hue-rotate(180deg);
+}
+html[data-rk-theme="dark"] .rk-keep-colors img,
+html[data-rk-theme="dark"] .rk-keep-colors [style*="background-image"] { filter: none; }
+
+/* Touch targets */
+@media (pointer: coarse) {
+  .rk-tap, button.rk-tap, .rk-seg > button { min-height: var(--rk-tap); }
+}
+
+/* Segmented control */
+.rk-seg { display: inline-flex; border: 1px solid currentColor; border-radius: 999px; overflow: hidden; }
+.rk-seg > button {
+  font: inherit; border: 0; background: transparent; color: inherit; padding: 6px 12px; cursor: pointer;
+}
+.rk-seg > button[aria-pressed="true"] { background: currentColor; }
+.rk-seg > button[aria-pressed="true"] { color: #fff; background: #0f766e; }
+
+/* Bottom sheets on phones: add class rk-sheet to a dialog / popup / modal card */
+@media (max-width: 640px) {
+  dialog.rk-sheet, .rk-sheet {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 88dvh !important;
+    border-radius: 16px 16px 0 0 !important;
+    overflow: auto;
+    animation: rk-up 0.22s ease-out;
+    z-index: 1000;
+  }
+  .rk-sheet::before {
+    content: ""; display: block; width: 40px; height: 4px; border-radius: 2px;
+    background: rgba(127, 127, 127, 0.5); margin: 6px auto 8px;
+  }
+}
+@keyframes rk-up { from { transform: translateY(24px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+
+/* Toast */
+.rk-toast {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px);
+  background: #111; color: #fff; padding: 10px 16px; border-radius: 999px; font: 13px var(--rk-font);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 3000; max-width: 90vw;
+}
+.rk-toast.is-on { opacity: 0.95; transform: translate(-50%, 0); }
+
+/* What's new bar */
+.rk-news {
+  position: fixed; left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 2500;
+  display: flex; gap: 8px; align-items: center; justify-content: space-between;
+  background: #0f766e; color: #fff; border-radius: var(--rk-radius); padding: 8px 8px 8px 14px;
+  font: 13px var(--rk-font); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); max-width: 640px; margin: 0 auto;
+}
+.rk-news button { background: transparent; color: inherit; border: 0; font-size: 20px; min-width: 36px; min-height: 36px; cursor: pointer; }
+
+/* Skeleton */
+.rk-skel { display: grid; gap: 10px; padding: 12px 0; }
+.rk-skel-row {
+  height: 14px; border-radius: 6px;
+  background: linear-gradient(90deg, rgba(127,127,127,.15) 25%, rgba(127,127,127,.3) 37%, rgba(127,127,127,.15) 63%);
+  background-size: 400% 100%; animation: rk-shimmer 1.3s ease infinite;
+}
+@keyframes rk-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .rk-skel-row { animation: none; } .rk-sheet, dialog.rk-sheet { animation: none; } }
+
+/* Apps switcher */
+.rk-apps { position: relative; display: inline-block; }
+.rk-apps > summary {
+  list-style: none; cursor: pointer; min-width: 32px; min-height: 32px; display: grid; place-items: center;
+  border-radius: 8px; font-size: 16px; line-height: 1; user-select: none;
+}
+.rk-apps > summary::-webkit-details-marker { display: none; }
+.rk-apps-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 2000; min-width: 140px;
+  background: #fff; color: #111; border: 1px solid rgba(0,0,0,.12); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 4px; display: grid;
+}
+/* !important: site headers often colour their links white; the menu is always a light card
+   (dark theme inverts it with the rest of the page). */
+.rk-apps .rk-apps-menu a, .rk-apps .rk-apps-menu a:visited {
+  color: #111 !important; background: transparent; text-decoration: none; padding: 10px 12px; border-radius: 6px;
+  font: 14px var(--rk-font); text-shadow: none;
+}
+.rk-apps .rk-apps-menu a:hover { background: rgba(15,118,110,.1); }
+.rk-apps .rk-apps-menu a[aria-current] { font-weight: 700; color: #0f766e !important; }
+
+.rk-stamp { font: 12px var(--rk-font); opacity: 0.75; }
+
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.18s; }

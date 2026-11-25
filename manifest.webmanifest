@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Events",
-  "short_name": "Events",
-  "description": "Upcoming events",
+  "name": "Rhodes Events",
+  "short_name": "Rhodes Events",
+  "description": "What's on in Rhodes",
   "lang": "en",
   "start_url": "./",
   "scope": "./",
