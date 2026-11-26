@@ -1,7 +1,7 @@
 {
   "title": "Rhodes Events",
   "eventPages": true,
-  "generated": "2026-11-26T08:44:15",
+  "generated": "2026-11-26T09:36:21",
   "center": {
     "lat": 36.451456,
     "lng": 28.2234119,
@@ -1698,13 +1698,13 @@
       "lng": 28.216347992420197,
       "map": "https://www.google.com/maps?q=36.45101221640785,28.216347992420197"
     },
-    "Τμήμα Μεσογειακών Σπουδών": {
-      "name": "Τμήμα Μεσογειακών Σπουδών",
+    "Κλειστό Γήπεδο Ιαλυσού": {
+      "name": "Κλειστό Γήπεδο Ιαλυσού",
       "website": "",
       "notes": "",
       "media": "",
       "mediaRows": [],
-      "nameOriginal": "Τμήμα Μεσογειακών Σπουδών",
+      "nameOriginal": "Κλειστό Γήπεδο Ιαλυσού",
       "nameTranslated": "",
       "map": ""
     },
@@ -1718,6 +1718,16 @@
       "nameTranslated": "",
       "map": ""
     },
+    "Τμήμα Μεσογειακών Σπουδών": {
+      "name": "Τμήμα Μεσογειακών Σπουδών",
+      "website": "",
+      "notes": "",
+      "media": "",
+      "mediaRows": [],
+      "nameOriginal": "Τμήμα Μεσογειακών Σπουδών",
+      "nameTranslated": "",
+      "map": ""
+    },
     "Παλαιά Οδός": {
       "name": "Παλαιά Οδός",
       "website": "",
@@ -1725,16 +1735,6 @@
       "media": "",
       "mediaRows": [],
       "nameOriginal": "Παλαιά Οδός",
-      "nameTranslated": "",
-      "map": ""
-    },
-    "Κλειστό Γήπεδο Ιαλυσού": {
-      "name": "Κλειστό Γήπεδο Ιαλυσού",
-      "website": "",
-      "notes": "",
-      "media": "",
-      "mediaRows": [],
-      "nameOriginal": "Κλειστό Γήπεδο Ιαλυσού",
       "nameTranslated": "",
       "map": ""
     }
