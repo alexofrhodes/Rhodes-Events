@@ -4343,6 +4343,8 @@
 
   /* ===== Backdrop helper ===== */
   let _backdrop = null;
+  // A tap that closes a popup must not also act on the page under it.
+  let swallowClickUntil = 0;
   function addBackdrop(popup, closeFn) {
     removeBackdrop();
     _backdrop = document.createElement("div");
@@ -4355,6 +4357,9 @@
         e.stopPropagation();
         return;
       }
+      e.preventDefault();
+      e.stopPropagation();
+      swallowClickUntil = performance.now() + 400;
       closeFn(e);
     };
     _backdrop.addEventListener("click", onClose);
@@ -4422,7 +4427,7 @@
     }
     html += "</div>";
     const infoCollapsed = state.entityInfoCollapsed ? " checked" : "";
-    html += `<label class="settings-check"><input type="checkbox" data-entity-info-collapsed${infoCollapsed} /> Collapse Info by default</label>`;
+    html += `<label class="settings-check" title="On venue, artist and organizer pages, show upcoming events first and keep the Info section (description, links) closed until tapped"><input type="checkbox" data-entity-info-collapsed${infoCollapsed} /> Venue / artist pages: start with Info folded</label>`;
     popup.innerHTML = html;
     popup.querySelector(".month-popup-close").addEventListener("click", closeSettingsPopup);
     popup.querySelectorAll("[data-cols]").forEach((btn) =>
@@ -4460,6 +4465,7 @@
         saveSettings();
         renderSettingsPopup();
         renderAll();
+        $("#settings-popup .settings-order-list")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
       })
     );
     popup.querySelectorAll("[data-group-move]").forEach((btn) =>
@@ -4760,6 +4766,38 @@
         e.stopPropagation();
         setTheme(btn.dataset.themeChoice);
       })
+    );
+    // Capture phase: a click outside an open dropdown only closes it, it never reaches the page.
+    const DROPDOWNS = [
+      ["#lang-dd-menu", "#lang-dd"],
+      ["#theme-dd-menu", "#theme-dd"],
+      ["#share-dd-menu", "#share-dd, #more-dd"],
+      ["#more-dd-menu", "#more-dd"],
+      ["#filters-dd-menu", "#filters-dd"],
+    ];
+    const isOpen = (el) => el && !el.classList.contains("hidden");
+    document.addEventListener(
+      "click",
+      (e) => {
+        if (performance.now() < swallowClickUntil) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        const open = DROPDOWNS.filter(([menu]) => isOpen($(menu)));
+        const calOpen = $$(".cal-menu").some(isOpen);
+        if (!open.length && !calOpen) return;
+        if (open.some(([, wrap]) => e.target.closest(wrap)) || (calOpen && e.target.closest(".cal-menu-wrap"))) return;
+        closeLangDropdown();
+        closeThemeDropdown();
+        closeShareDropdown();
+        closeMoreMenu();
+        closeFiltersMenu();
+        closeCalMenus();
+        e.preventDefault();
+        e.stopPropagation();
+      },
+      true
     );
     document.addEventListener("click", (e) => {
       if (!e.target.closest("#lang-dd")) closeLangDropdown();
