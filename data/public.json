@@ -1,7 +1,7 @@
 {
   "title": "Rhodes Events",
   "eventPages": true,
-  "generated": "2026-11-26T09:36:21",
+  "generated": "2026-11-26T12:48:05",
   "center": {
     "lat": 36.451456,
     "lng": 28.2234119,
@@ -1698,6 +1698,26 @@
       "lng": 28.216347992420197,
       "map": "https://www.google.com/maps?q=36.45101221640785,28.216347992420197"
     },
+    "Παλαιά Οδός": {
+      "name": "Παλαιά Οδός",
+      "website": "",
+      "notes": "",
+      "media": "",
+      "mediaRows": [],
+      "nameOriginal": "Παλαιά Οδός",
+      "nameTranslated": "",
+      "map": ""
+    },
+    "Τμήμα Μεσογειακών Σπουδών": {
+      "name": "Τμήμα Μεσογειακών Σπουδών",
+      "website": "",
+      "notes": "",
+      "media": "",
+      "mediaRows": [],
+      "nameOriginal": "Τμήμα Μεσογειακών Σπουδών",
+      "nameTranslated": "",
+      "map": ""
+    },
     "Κλειστό Γήπεδο Ιαλυσού": {
       "name": "Κλειστό Γήπεδο Ιαλυσού",
       "website": "",
@@ -1715,26 +1735,6 @@
       "media": "",
       "mediaRows": [],
       "nameOriginal": "Ταβέρνα Περικλής",
-      "nameTranslated": "",
-      "map": ""
-    },
-    "Τμήμα Μεσογειακών Σπουδών": {
-      "name": "Τμήμα Μεσογειακών Σπουδών",
-      "website": "",
-      "notes": "",
-      "media": "",
-      "mediaRows": [],
-      "nameOriginal": "Τμήμα Μεσογειακών Σπουδών",
-      "nameTranslated": "",
-      "map": ""
-    },
-    "Παλαιά Οδός": {
-      "name": "Παλαιά Οδός",
-      "website": "",
-      "notes": "",
-      "media": "",
-      "mediaRows": [],
-      "nameOriginal": "Παλαιά Οδός",
       "nameTranslated": "",
       "map": ""
     }
