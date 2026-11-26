@@ -1,6 +1,9 @@
 (() => {
   "use strict";
 
+  /** Artist / organizer names of an event; several are stored as "A; B". */
+  const splitNames = (v) => [...new Set(String(v || "").split(";").map((x) => x.trim()).filter(Boolean))];
+
   const SETTINGS_KEY = "events-site-settings-v1";
   const ALL_VIEWS = ["cards", "rails", "table", "posters", "calendar", "directory", "map", "starred"];
   const ALL_FILTERS = ["search", "categories", "venues", "toggles"];
@@ -669,8 +672,8 @@
     const key = String(name || "").trim();
     if (!key) return [];
     return state.events.filter((ev) => {
-      if (kind === "artist") return (ev.artist || "").trim() === key;
-      if (kind === "organizer") return (ev.organizer || "").trim() === key;
+      if (kind === "artist") return splitNames(ev.artist).includes(key);
+      if (kind === "organizer") return splitNames(ev.organizer).includes(key);
       return (ev.locationKey || "").trim() === key || (ev.location || "").trim() === key;
     });
   }
@@ -3002,45 +3005,31 @@
       where.onclick = null;
       where.onkeydown = null;
     }
-    const artist = $("#detail-artist");
-    if (ev.artist) {
-      artist.textContent = entityDisplayName(findEntity("artist", ev.artist)) || ev.artist;
-      artist.classList.remove("hidden");
-      artist.classList.add("entity-link");
-      artist.setAttribute("role", "link");
-      artist.tabIndex = 0;
-      artist.onclick = () => openEntity("artist", ev.artist, { fromEventId: ev.id });
-      artist.onkeydown = (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openEntity("artist", ev.artist, { fromEventId: ev.id });
-        }
-      };
-    } else {
-      artist.classList.add("hidden");
-      artist.onclick = null;
-      artist.onkeydown = null;
-    }
-    const organizer = $("#detail-organizer");
-    if (ev.organizer) {
-      organizer.textContent =
-        entityDisplayName(findEntity("organizer", ev.organizer)) || ev.organizer;
-      organizer.classList.remove("hidden");
-      organizer.classList.add("entity-link");
-      organizer.setAttribute("role", "link");
-      organizer.tabIndex = 0;
-      organizer.onclick = () => openEntity("organizer", ev.organizer, { fromEventId: ev.id });
-      organizer.onkeydown = (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openEntity("organizer", ev.organizer, { fromEventId: ev.id });
-        }
-      };
-    } else {
-      organizer.classList.add("hidden");
-      organizer.onclick = null;
-      organizer.onkeydown = null;
-    }
+    // An event can name several artists / organizers ("A; B"): each name links to its own page.
+    const fillNames = (el, kind, value) => {
+      const names = splitNames(value);
+      el.classList.toggle("hidden", !names.length);
+      el.classList.remove("entity-link");
+      el.removeAttribute("role");
+      el.removeAttribute("tabindex");
+      el.onclick = null;
+      el.onkeydown = null;
+      el.innerHTML = names
+        .map((n) => `<span class="entity-link" role="link" tabindex="0" data-entity="${escapeHtml(n)}">${escapeHtml(entityDisplayName(findEntity(kind, n)) || n)}</span>`)
+        .join('<span class="name-sep">, </span>');
+      el.querySelectorAll("[data-entity]").forEach((span) => {
+        const go = () => openEntity(kind, span.dataset.entity, { fromEventId: ev.id });
+        span.onclick = go;
+        span.onkeydown = (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            go();
+          }
+        };
+      });
+    };
+    fillNames($("#detail-artist"), "artist", ev.artist);
+    fillNames($("#detail-organizer"), "organizer", ev.organizer);
     const lineupSec = $("#detail-lineup-label")?.closest(".detail-section");
     if (lineupSec) lineupSec.classList.toggle("hidden", !ev.artist && !ev.organizer);
     const cats = $("#detail-cats");
