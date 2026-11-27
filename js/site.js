@@ -691,6 +691,11 @@
     const panel = $("#entity");
     if (!panel) return;
     panel.classList.add("hidden");
+    const sheet = panel.querySelector(".entity-sheet");
+    if (sheet) {
+      sheet.classList.remove("is-dragging");
+      sheet.style.transform = "";
+    }
     state.entity = null;
     state.entityFromEventId = null;
     const back = $("[data-entity-back]");
@@ -2963,8 +2968,27 @@
     syncDetailBackUi();
     const hero = $("#detail-hero");
     const img = imageUrl(ev, false) || imageUrl(ev, true);
+    const small = imageUrl(ev, true);
     state.heroSrc = img;
-    hero.style.backgroundImage = img ? `url('${escapeAttr(img)}')` : "";
+    // Show the small picture the card already loaded, then swap in the full one once it has arrived.
+    hero.style.backgroundImage = small && small !== img ? `url('${escapeAttr(small)}')` : "";
+    hero.classList.toggle("img-none", !img);
+    hero.classList.remove("img-missing");
+    hero.classList.toggle("img-loading", Boolean(img));
+    if (img) {
+      const pre = new Image();
+      pre.onload = () => {
+        if (state.heroSrc !== img) return;
+        hero.style.backgroundImage = `url('${escapeAttr(img)}')`;
+        hero.classList.remove("img-loading");
+      };
+      pre.onerror = () => {
+        if (state.heroSrc !== img) return;
+        hero.classList.remove("img-loading");
+        if (!small || small === img) hero.classList.add("img-missing");
+      };
+      pre.src = img;
+    }
     hero.disabled = !img;
     $("#detail-title").textContent = ev.title || "Untitled";
     const star = $("#detail-star");
@@ -3101,7 +3125,49 @@
     const chrome = sheet?.querySelector("[data-detail-drag]");
     const panel = sheet?.querySelector(".detail-scroll") || sheet?.querySelector(".detail-panel");
     if (!sheet || !chrome) return;
+    const drag = bindPullToDismiss({ sheet, chrome, panel, onClose: closeDetail, skipSelector: ".detail-close" });
 
+    detail.addEventListener(
+      "wheel",
+      (e) => {
+        if (!$("#detail").classList.contains("hidden") && !e.target.closest(".detail-panel")) {
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+    detail.addEventListener(
+      "touchmove",
+      (e) => {
+        if ($("#detail").classList.contains("hidden")) return;
+        if (e.target.closest(".detail-panel") && !drag.active()) return;
+        e.preventDefault();
+      },
+      { passive: false }
+    );
+  }
+
+  /* Venue / artist / organizer page: same pull-down-to-close as the event drawer. */
+  function bindEntityDrawer() {
+    const root = $("#entity");
+    const sheet = root?.querySelector(".entity-sheet");
+    const chrome = sheet?.querySelector(".entity-sheet-chrome");
+    const panel = sheet?.querySelector(".entity-scroll");
+    if (!sheet || !chrome) return;
+    const drag = bindPullToDismiss({ sheet, chrome, panel, onClose: closeEntity, skipSelector: "a, button" });
+    root.addEventListener(
+      "touchmove",
+      (e) => {
+        if (root.classList.contains("hidden")) return;
+        if (e.target.closest(".entity-scroll") && !drag.active()) return;
+        e.preventDefault();
+      },
+      { passive: false }
+    );
+  }
+
+  /** Drag the header (or pull the list down while it is at its top) to close a bottom sheet. */
+  function bindPullToDismiss({ sheet, chrome, panel, onClose, skipSelector }) {
     /* Dismiss when pulled past this fraction of the viewport height (was 0.5). */
     const DISMISS_RATIO = 0.22;
     const ARM_PX = 8;
@@ -3159,7 +3225,7 @@
         blockDetailGhostClick();
         blockDetailGhostScroll();
         resetSheet();
-        closeDetail();
+        onClose();
         return;
       }
       if (moved) blockDetailGhostClick(300);
@@ -3173,7 +3239,7 @@
 
     chrome.addEventListener("pointerdown", (e) => {
       if (e.button !== undefined && e.button !== 0) return;
-      if (e.target.closest(".detail-close")) return;
+      if (skipSelector && e.target.closest(skipSelector)) return;
       beginSheetDrag(e, chrome);
     });
     chrome.addEventListener("pointermove", moveSheetDrag);
@@ -3245,24 +3311,7 @@
       });
     }
 
-    detail.addEventListener(
-      "wheel",
-      (e) => {
-        if (!$("#detail").classList.contains("hidden") && !e.target.closest(".detail-panel")) {
-          e.preventDefault();
-        }
-      },
-      { passive: false }
-    );
-    detail.addEventListener(
-      "touchmove",
-      (e) => {
-        if ($("#detail").classList.contains("hidden")) return;
-        if (e.target.closest(".detail-panel") && !panelDragging && !dragging) return;
-        e.preventDefault();
-      },
-      { passive: false }
-    );
+    return { active: () => panelDragging || dragging };
   }
 
   function openLocationOnMap(ev) {
@@ -4365,12 +4414,15 @@
     _backdrop.addEventListener("click", onClose);
     _backdrop.addEventListener("pointerup", onClose);
     document.body.appendChild(_backdrop);
+    // While a popup is open the page underneath must not scroll (wheel or swipe over the popup).
+    document.documentElement.classList.add("popup-open");
   }
   function removeBackdrop() {
     if (_backdrop) {
       _backdrop.remove();
       _backdrop = null;
     }
+    document.documentElement.classList.remove("popup-open");
   }
 
   /* ===== Settings popup ===== */
@@ -4412,6 +4464,8 @@
       html += `<label><input type="checkbox" data-show-filter="${key}"${checked} /> ${FILTER_LABELS[key] || key}</label>`;
     });
     html += "</div></div></div>";
+    const infoCollapsed = state.entityInfoCollapsed ? " checked" : "";
+    html += `<label class="settings-check" title="On venue, artist and organizer pages, show upcoming events first and keep the Info section (description, links) closed until tapped"><input type="checkbox" data-entity-info-collapsed${infoCollapsed} /> Venue / artist pages: start with Info folded</label>`;
     html += '<div class="settings-row settings-block settings-order"><label>Order</label><div class="settings-choices">';
     html += `<button type="button" data-list-order="date" class="${state.listOrder === "date" ? "active" : ""}">By date</button>`;
     html += `<button type="button" data-list-order="grouped" class="${state.listOrder === "grouped" ? "active" : ""}">Grouped</button>`;
@@ -4426,8 +4480,6 @@
       html += "</ol>";
     }
     html += "</div>";
-    const infoCollapsed = state.entityInfoCollapsed ? " checked" : "";
-    html += `<label class="settings-check" title="On venue, artist and organizer pages, show upcoming events first and keep the Info section (description, links) closed until tapped"><input type="checkbox" data-entity-info-collapsed${infoCollapsed} /> Venue / artist pages: start with Info folded</label>`;
     popup.innerHTML = html;
     popup.querySelector(".month-popup-close").addEventListener("click", closeSettingsPopup);
     popup.querySelectorAll("[data-cols]").forEach((btn) =>
@@ -4465,7 +4517,7 @@
         saveSettings();
         renderSettingsPopup();
         renderAll();
-        $("#settings-popup .settings-order-list")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        $("#settings-popup .settings-order-list")?.scrollIntoView({ block: "end", behavior: "smooth" });
       })
     );
     popup.querySelectorAll("[data-group-move]").forEach((btn) =>
@@ -4963,6 +5015,25 @@
     });
     $$("[data-close]").forEach((el) => el.addEventListener("click", closeDetail));
     bindDetailDrawer();
+    bindEntityDrawer();
+    // Image states for every <img> on the page: pulse while loading, "No image" if it fails.
+    document.addEventListener(
+      "load",
+      (e) => {
+        if (e.target.tagName === "IMG") e.target.classList.add("img-ok");
+      },
+      true
+    );
+    document.addEventListener(
+      "error",
+      (e) => {
+        const img = e.target;
+        if (img.tagName !== "IMG") return;
+        img.classList.add("img-missing");
+        img.parentElement?.classList.add("img-missing-box");
+      },
+      true
+    );
     bindCalMenu($("#btn-cal"), $("#cal-menu"), () => state.selected && downloadIcs(state.selected));
     $("#btn-share").addEventListener("click", (e) => {
       e.stopPropagation();

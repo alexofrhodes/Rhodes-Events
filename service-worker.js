@@ -1,5 +1,12 @@
-/* PWA: precache app shell; network-first so republish updates show. */
-const SHELL = "events-shell-v116";
+/* PWA: precache app shell; network-first so republish updates show.
+   The cache version lives in sw-version.js (written by Publish, not part of the template):
+   a new number there makes browsers install this worker again. */
+try {
+  importScripts("sw-version.js");
+} catch (_) {
+  /* new site without a published version yet */
+}
+const SHELL = "events-shell-v" + (self.SHELL_VERSION || 1);
 const SHELL_URLS = [
   "./",
   "index.html",
@@ -36,8 +43,30 @@ function isShellPath(path) {
   );
 }
 
-function isDataOrImage(path) {
-  return path.includes("/data/") || path.includes("/img/");
+function isData(path) {
+  return path.includes("/data/");
+}
+
+function isImage(path) {
+  return path.includes("/img/");
+}
+
+/* Event pictures: show the saved copy at once (no reload flash), refresh it in the background
+   so a republished picture appears on the next view. */
+async function cacheThenRefresh(event) {
+  const cache = await caches.open(SHELL);
+  const cached = await cache.match(event.request);
+  const refresh = fetch(event.request)
+    .then((res) => {
+      if (res && res.ok) cache.put(event.request, res.clone());
+      return res;
+    })
+    .catch(() => cached);
+  if (cached) {
+    event.waitUntil(refresh);
+    return cached;
+  }
+  return refresh;
 }
 
 async function precacheShell() {
@@ -105,7 +134,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (isDataOrImage(path)) {
+  if (isImage(path)) {
+    event.respondWith(cacheThenRefresh(event));
+    return;
+  }
+
+  if (isData(path)) {
     event.respondWith(networkFirst(req));
     return;
   }

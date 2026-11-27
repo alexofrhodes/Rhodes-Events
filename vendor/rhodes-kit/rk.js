@@ -152,11 +152,33 @@
     { key: 'guide', label: 'Guide', url: 'https://alexofrhodes.github.io/RhodesGuide/' },
     { key: 'events', label: 'Events', url: 'https://alexofrhodes.github.io/Rhodes-Events/' },
   ];
+  /* Rhodes Apps mark: the Knights' rose — four notched rose petals forming the eight-pointed cross
+     of the Knights of Rhodes, four small petals between the arms, a gold heart. */
+  var ROSE_ARM = 'M10.8 10.2L6.9 3.5Q6.5 2.5 7.6 2.4Q10.3 2.5 12 4.3Q13.7 2.5 16.4 2.4Q17.5 2.5 17.1 3.5L13.2 10.2Q12 11.8 10.8 10.2Z';
+  RK.roseSvg = function (size) {
+    var arms = [0, 90, 180, 270].map(function (a) {
+      return '<path d="' + ROSE_ARM + '"' + (a ? ' transform="rotate(' + a + ' 12 12)"' : '') + '/>';
+    }).join('');
+    var small = [[17.3, 6.7, 45], [17.3, 17.3, 135], [6.7, 17.3, 45], [6.7, 6.7, 135]].map(function (p) {
+      return '<ellipse cx="' + p[0] + '" cy="' + p[1] + '" rx="1.35" ry="2.1" transform="rotate(' + p[2] + ' ' + p[0] + ' ' + p[1] + ')"/>';
+    }).join('');
+    return '<svg class="rk-rose" viewBox="2.1 2.1 19.8 19.8" width="' + (size || 22) + '" height="' + (size || 22) +
+      '" aria-hidden="true" focusable="false"><g class="rk-rose-turn"><g class="rk-rose-arms" fill="#e11d48">' + arms +
+      '</g><g class="rk-rose-small" fill="#f43f5e">' + small + '</g></g><circle class="rk-rose-heart" cx="12" cy="12" r="1.25" fill="#f59e0b"/></svg>';
+  };
+
   RK.switcher = function (el, current) {
     if (!el) return;
     var d = document.createElement('details');
     d.className = 'rk-apps';
-    d.innerHTML = '<summary aria-label="Rhodes apps" title="Rhodes apps">▦</summary><nav class="rk-apps-menu"></nav>';
+    d.innerHTML = '<summary class="rk-keep-colors" aria-label="Rhodes apps" title="Rhodes apps">' + RK.roseSvg(22) + '</summary><nav class="rk-apps-menu"></nav>';
+    // Bloom once per visit (not on every page of a multi-page site); turning on open/close is CSS.
+    try {
+      if (!sessionStorage.getItem('rk-rose-bloomed')) {
+        sessionStorage.setItem('rk-rose-bloomed', '1');
+        d.querySelector('.rk-rose').classList.add('rk-rose-bloom');
+      }
+    } catch (e) { /* private mode: no bloom */ }
     var nav = d.querySelector('nav');
     RK.apps.forEach(function (a) {
       var link = document.createElement('a');

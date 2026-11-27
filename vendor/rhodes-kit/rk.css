@@ -93,6 +93,27 @@ html[data-rk-theme="dark"] .rk-keep-colors [style*="background-image"] { filter:
   border-radius: 8px; font-size: 16px; line-height: 1; user-select: none;
 }
 .rk-apps > summary::-webkit-details-marker { display: none; }
+/* The rose sits on a small white round tile, so its colours hold on any header colour. */
+.rk-apps > summary {
+  width: 32px; height: 32px; padding: 0; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.12);
+}
+.rk-rose { display: block; overflow: visible; }
+.rk-rose-turn, .rk-rose-arms, .rk-rose-small, .rk-rose-heart { transform-box: view-box; transform-origin: 50% 50%; }
+/* Turn: an eighth of a turn (cross → ×) while the apps menu is open. */
+.rk-rose-turn { transition: transform .45s cubic-bezier(.3, 1.4, .5, 1); }
+.rk-apps[open] .rk-rose-turn { transform: rotate(45deg); }
+/* Bloom: once per visit, the cross unfolds, the small petals follow, the gold heart lands. */
+.rk-rose-bloom .rk-rose-arms { animation: rk-bloom-arms .7s cubic-bezier(.2, .9, .3, 1.15) .15s both; }
+.rk-rose-bloom .rk-rose-small { animation: rk-bloom-small .45s ease-out .53s both; }
+.rk-rose-bloom .rk-rose-heart { animation: rk-bloom-heart .4s cubic-bezier(.3, 1.6, .5, 1) .77s both; }
+@keyframes rk-bloom-arms { from { transform: scale(.15) rotate(-90deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rk-bloom-small { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rk-bloom-heart { from { transform: scale(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .rk-rose-turn { transition: none; }
+  .rk-rose-bloom .rk-rose-arms, .rk-rose-bloom .rk-rose-small, .rk-rose-bloom .rk-rose-heart { animation: none; }
+}
 .rk-apps-menu {
   position: absolute; right: 0; top: calc(100% + 4px); z-index: 2000; min-width: 140px;
   background: #fff; color: #111; border: 1px solid rgba(0,0,0,.12); border-radius: 10px;
