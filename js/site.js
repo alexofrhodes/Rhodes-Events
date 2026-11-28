@@ -87,6 +87,7 @@
     directorySearch: "",
     directorySort: "count",
     entityInfoCollapsed: false,
+    barsBottom: false,
     /* List order: "date" (soonest first) or "grouped" (groups in groupOrder, each by date). */
     listOrder: "date",
     groupOrder: ["oneoff", "ongoing", "weekly"],
@@ -473,6 +474,7 @@
       if (Array.isArray(data.hiddenFilters)) {
         state.hiddenFilters = new Set(data.hiddenFilters.filter((v) => ALL_FILTERS.includes(v)));
       }
+      if (typeof data.barsBottom === "boolean") state.barsBottom = data.barsBottom;
       if (typeof data.entityInfoCollapsed === "boolean") {
         state.entityInfoCollapsed = data.entityInfoCollapsed;
       }
@@ -516,6 +518,7 @@
           hiddenViews: [...state.hiddenViews],
           hiddenFilters: [...state.hiddenFilters],
           entityInfoCollapsed: state.entityInfoCollapsed,
+          barsBottom: state.barsBottom,
           listOrder: state.listOrder,
           groupOrder: state.groupOrder,
           directorySort: state.directorySort,
@@ -865,6 +868,40 @@
     updateHideToggleCounts();
     updateTogglesButton();
     applyCardsPerRow();
+    applyBarsBottom();
+  }
+
+  /* Settings → Top bars at the bottom (thumb reach on phones). */
+  function applyBarsBottom() {
+    document.body.classList.toggle("bars-bottom", !!state.barsBottom);
+    const top = $(".top");
+    if (!top || top._barsObs || typeof ResizeObserver === "undefined") return;
+    top._barsObs = new ResizeObserver(() =>
+      document.documentElement.style.setProperty("--top-h", `${top.offsetHeight}px`)
+    );
+    top._barsObs.observe(top);
+  }
+
+  /* Logo = home: the first view, this month, no search or filters, back to the top. */
+  function goHome() {
+    clearCategoryFilter();
+    clearLocationFilter();
+    state.hideAllDay = false;
+    state.hideMultiDay = false;
+    const a = $("#hide-allday");
+    const m = $("#hide-multiday");
+    if (a) a.checked = false;
+    if (m) m.checked = false;
+    updateTogglesButton();
+    state.search = "";
+    const input = $("#search");
+    if (input) input.value = "";
+    state.focusMonth = monthKeyFromDate(new Date());
+    syncRangeToFocusMonth();
+    updateRangeBtn();
+    setView(firstEnabledView());
+    applyFilters();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function applyCardsPerRow() {
@@ -4465,6 +4502,7 @@
     });
     html += "</div></div></div>";
     const infoCollapsed = state.entityInfoCollapsed ? " checked" : "";
+    html += `<label class="settings-check" title="Header and toolbar sit at the bottom of the screen, near your thumb"><input type="checkbox" data-bars-bottom${state.barsBottom ? " checked" : ""} /> Top bars at the bottom</label>`;
     html += `<label class="settings-check" title="On venue, artist and organizer pages, show upcoming events first and keep the Info section (description, links) closed until tapped"><input type="checkbox" data-entity-info-collapsed${infoCollapsed} /> Venue / artist pages: start with Info folded</label>`;
     html += '<div class="settings-row settings-block settings-order"><label>Order</label><div class="settings-choices">';
     html += `<button type="button" data-list-order="date" class="${state.listOrder === "date" ? "active" : ""}">By date</button>`;
@@ -4535,6 +4573,11 @@
     );
     popup.querySelector("[data-entity-info-collapsed]")?.addEventListener("change", (e) => {
       state.entityInfoCollapsed = Boolean(e.target.checked);
+      saveSettings();
+    });
+    popup.querySelector("[data-bars-bottom]")?.addEventListener("change", (e) => {
+      state.barsBottom = Boolean(e.target.checked);
+      applyBarsBottom();
       saveSettings();
     });
   }
@@ -4867,6 +4910,19 @@
         renderDirectory();
       })
     );
+    const logo = $(".top .brand-logo");
+    if (logo) {
+      logo.setAttribute("role", "button");
+      logo.setAttribute("tabindex", "0");
+      logo.title = "Home";
+      logo.addEventListener("click", goHome);
+      logo.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goHome();
+        }
+      });
+    }
     if (window.RK) {
       window.RK.switcher($("#ev-apps"), "events");
       window.RK.whatsNew(

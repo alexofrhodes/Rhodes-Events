@@ -130,8 +130,12 @@ body {
 }
 
 .top-inner > .brand {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
+}
+
+.top .brand-logo {
+  cursor: pointer;
 }
 
 .top-inner > .title-bar-actions {
@@ -5331,3 +5335,20 @@ img.img-missing {
   text-align: center;
   pointer-events: none;
 }
+/* Settings → Top bars at the bottom: the header moves under the page, sticky above the status bar. */
+body.bars-bottom main { order: 1; }
+body.bars-bottom .top {
+  order: 2;
+  top: auto;
+  bottom: 0;
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+  padding-bottom: 0.3rem;
+}
+body.bars-bottom .site-info { order: 3; position: static; }
+body.bars-bottom .top .views-dd-menu,
+body.bars-bottom .top .action-dd-menu {
+  top: auto;
+  bottom: calc(100% + 0.3rem);
+}
+body.bars-bottom .scroll-top { bottom: calc(var(--top-h, 8rem) + 0.75rem); }
