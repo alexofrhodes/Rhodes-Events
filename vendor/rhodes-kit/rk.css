@@ -99,7 +99,9 @@ html[data-rk-theme="dark"] .rk-keep-colors [style*="background-image"] { filter:
   background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.12);
 }
 .rk-rose { display: block; overflow: visible; }
-.rk-rose-turn, .rk-rose-arms, .rk-rose-small, .rk-rose-heart { transform-box: view-box; transform-origin: 50% 50%; }
+/* view-box puts the reference box at the coordinate origin (0,0), not at the viewBox's 2.1 offset:
+   turn around the rose's real centre, (12,12) in its own units. */
+.rk-rose-turn, .rk-rose-arms, .rk-rose-small, .rk-rose-heart { transform-box: view-box; transform-origin: 12px 12px; }
 /* Turn: an eighth of a turn (cross → ×) while the apps menu is open. */
 .rk-rose-turn { transition: transform .45s cubic-bezier(.3, 1.4, .5, 1); }
 .rk-apps[open] .rk-rose-turn { transform: rotate(45deg); }
@@ -131,3 +133,13 @@ html[data-rk-theme="dark"] .rk-keep-colors [style*="background-image"] { filter:
 .rk-stamp { font: 12px var(--rk-font); opacity: 0.75; }
 
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.18s; }
+
+/* Update bar: Reload button */
+.rk-update .rk-update-go { font-size: 13px; font-weight: 700; border: 1px solid rgba(255,255,255,.7); border-radius: 999px; padding: 0 14px; margin-left: auto; }
+
+/* Pinch zoom / text selection prefs */
+.rk-prefs { display: grid; gap: 6px; }
+.rk-pref { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+html.rk-select body, html.rk-select body * { -webkit-user-select: text !important; user-select: text !important; }
+html.rk-no-select body, html.rk-no-select body * { -webkit-user-select: none !important; user-select: none !important; }
+html.rk-no-select input, html.rk-no-select textarea { -webkit-user-select: text !important; user-select: text !important; }

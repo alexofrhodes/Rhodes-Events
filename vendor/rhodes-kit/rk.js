@@ -203,6 +203,77 @@
     el.appendChild(d);
   };
 
+  /* ---------- Pinch zoom + text selection (one setting for every Rhodes app on this origin) ---------- */
+  var prefDefaults = { zoom: true, select: true };
+  var baseViewport = null;
+  /** Apply the saved choices; `defaults` (first call) says what a site does when nothing is saved. */
+  RK.applyViewPrefs = function (defaults) {
+    if (defaults) for (var k in defaults) prefDefaults[k] = defaults[k];
+    var zoom = store.get('rk-allow-zoom', prefDefaults.zoom ? '1' : '0') === '1';
+    var sel = store.get('rk-allow-select', prefDefaults.select ? '1' : '0') === '1';
+    var meta = document.querySelector('meta[name="viewport"]');
+    if (meta) {
+      if (baseViewport == null) {
+        baseViewport = (meta.getAttribute('content') || 'width=device-width, initial-scale=1')
+          .split(',').map(function (s) { return s.trim(); })
+          .filter(function (s) { return s && !/^(maximum-scale|user-scalable)\s*=/i.test(s); }).join(', ');
+      }
+      meta.setAttribute('content', baseViewport + (zoom ? '' : ', maximum-scale=1, user-scalable=no'));
+    }
+    document.documentElement.classList.toggle('rk-select', sel);
+    document.documentElement.classList.toggle('rk-no-select', !sel);
+  };
+  /** Two checkboxes for a Settings panel: "Allow pinch zoom", "Allow text selection". */
+  RK.viewPrefsControl = function (el) {
+    if (!el) return;
+    var row = function (key, label, on) {
+      return '<label class="rk-pref"><input type="checkbox" data-rk-pref="' + key + '"' + (on ? ' checked' : '') + '> <span>' + label + '</span></label>';
+    };
+    el.classList.add('rk-prefs');
+    el.innerHTML =
+      row('rk-allow-zoom', 'Allow pinch zoom', store.get('rk-allow-zoom', prefDefaults.zoom ? '1' : '0') === '1') +
+      row('rk-allow-select', 'Allow text selection', store.get('rk-allow-select', prefDefaults.select ? '1' : '0') === '1');
+    el.addEventListener('change', function (e) {
+      var key = e.target.getAttribute('data-rk-pref');
+      if (!key) return;
+      store.set(key, e.target.checked ? '1' : '0');
+      RK.applyViewPrefs();
+    });
+  };
+
+  /* ---------- New version: the service worker switched while this page was open ----------
+     Every site's worker installs, skips waiting and claims open pages, but the page on screen was
+     already drawn from the old cache. Right after opening (no tap yet) reload at once; later, offer
+     a Reload bar instead of yanking the page away. On iOS a home-screen app resumes without a new
+     launch, so ask the worker to check for an update whenever the page comes back into view. */
+  RK.watchUpdates = function () {
+    if (!('serviceWorker' in navigator) || RK._watchingUpdates) return;
+    RK._watchingUpdates = true;
+    var sw = navigator.serviceWorker;
+    var hadController = !!sw.controller;
+    var t0 = Date.now();
+    var touched = false;
+    var mark = function () { touched = true; };
+    ['pointerdown', 'keydown', 'wheel'].forEach(function (ev) { window.addEventListener(ev, mark, { once: true, passive: true }); });
+    sw.addEventListener('controllerchange', function () {
+      if (!hadController) { hadController = true; return; } // first install: nothing old on screen
+      if (!touched && Date.now() - t0 < 10000) { location.reload(); return; }
+      if (document.querySelector('.rk-update')) return;
+      var bar = document.createElement('div');
+      bar.className = 'rk-news rk-update';
+      bar.setAttribute('role', 'status');
+      bar.innerHTML = '<span class="rk-news-text">A new version is ready.</span><button type="button" class="rk-update-go">Reload</button><button type="button" aria-label="Later">×</button>';
+      bar.querySelector('.rk-update-go').addEventListener('click', function () { location.reload(); });
+      bar.querySelector('[aria-label="Later"]').addEventListener('click', function () { bar.remove(); });
+      document.body.appendChild(bar);
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) return;
+      sw.getRegistration().then(function (r) { if (r) r.update(); }).catch(function () {});
+    });
+  };
+  RK.watchUpdates();
+
   /* ---------- Script loader: local copy first, CDN fallback ---------- */
   RK.loadScript = function (localSrc, cdnSrc) {
     function add(src) {

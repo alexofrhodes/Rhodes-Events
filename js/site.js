@@ -872,6 +872,9 @@
   }
 
   /* Settings → Top bars at the bottom (thumb reach on phones). */
+  /* Pinch zoom on, text selection off unless chosen in Settings → Touch (rhodes-kit, shared by the Rhodes apps). */
+  if (window.RK && window.RK.applyViewPrefs) window.RK.applyViewPrefs({ zoom: true, select: false });
+
   function applyBarsBottom() {
     document.body.classList.toggle("bars-bottom", !!state.barsBottom);
     const top = $(".top");
@@ -4502,6 +4505,7 @@
     });
     html += "</div></div></div>";
     const infoCollapsed = state.entityInfoCollapsed ? " checked" : "";
+    html += '<div class="settings-row settings-block"><label>Touch</label><div id="settings-view-prefs" class="settings-toggles"></div></div>';
     html += `<label class="settings-check" title="Header and toolbar sit at the bottom of the screen, near your thumb"><input type="checkbox" data-bars-bottom${state.barsBottom ? " checked" : ""} /> Top bars at the bottom</label>`;
     html += `<label class="settings-check" title="On venue, artist and organizer pages, show upcoming events first and keep the Info section (description, links) closed until tapped"><input type="checkbox" data-entity-info-collapsed${infoCollapsed} /> Venue / artist pages: start with Info folded</label>`;
     html += '<div class="settings-row settings-block settings-order"><label>Order</label><div class="settings-choices">';
@@ -4575,6 +4579,7 @@
       state.entityInfoCollapsed = Boolean(e.target.checked);
       saveSettings();
     });
+    if (window.RK && window.RK.viewPrefsControl) window.RK.viewPrefsControl(popup.querySelector("#settings-view-prefs"));
     popup.querySelector("[data-bars-bottom]")?.addEventListener("change", (e) => {
       state.barsBottom = Boolean(e.target.checked);
       applyBarsBottom();
